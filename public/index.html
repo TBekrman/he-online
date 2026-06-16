@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HE - Online</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="./styles.css" rel="stylesheet">
+</head>
+<body>
+  <section id="setupScreen" class="setup-screen">
+    <form id="firebaseConfigForm" class="setup-card">
+      <h1>Historico Escolar Online</h1>
+      <p>Informe a configuracao Web do Firebase para conectar o sistema ao seu projeto.</p>
+      <textarea id="firebaseConfigText" class="form-control" rows="8" spellcheck="false" required></textarea>
+      <button class="btn btn-primary w-100 mt-3">Salvar configuracao</button>
+      <small>Firebase Console > Configuracoes do projeto > Seus apps > Web app > Configuracao do SDK.</small>
+    </form>
+  </section>
+
+  <section id="authScreen" class="setup-screen d-none">
+    <form id="loginForm" class="setup-card">
+      <h1>Historico Escolar Online</h1>
+      <p>Sistema Desenvolvido pela Escola Estadual Nossa Senhora Auxiliadora.</p>
+      <label class="form-label">Email</label>
+      <input type="email" class="form-control" name="email" required>
+      <label class="form-label mt-3">Senha</label>
+      <input type="password" class="form-control" name="password" required>
+      <div class="d-grid gap-2 mt-3">
+        <button class="btn btn-primary">Entrar</button>
+        <button type="button" class="btn btn-outline-dark" id="googleLogin"><i class="bi bi-google"></i> Entrar com Google</button>
+      </div>
+    </form>
+  </section>
+
+  <div id="app" class="app-shell d-none">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">HE</div>
+        <div><strong>HE - Online</strong><small>Firebase</small></div>
+      </div>
+      <nav class="nav flex-column">
+        <button class="nav-link active" data-view="dashboard"><i class="bi bi-speedometer2"></i><span>Dashboard</span></button>
+        <button class="nav-link" data-view="alunos"><i class="bi bi-people"></i><span>Alunos</span></button>
+        <button class="nav-link" data-view="historicos"><i class="bi bi-journal-text"></i><span>Historicos</span></button>
+        <button class="nav-link" data-view="certificados"><i class="bi bi-award"></i><span>Certificados</span></button>
+        <button class="nav-link admin-only d-none" data-view="usuarios"><i class="bi bi-person-gear"></i><span>Usuarios</span></button>
+        <button class="nav-link" data-view="config"><i class="bi bi-gear"></i><span>Configuracoes</span></button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle">Visao geral do historico escolar</p></div>
+        <div class="user-box"><i class="bi bi-person-circle"></i><span id="userEmail"></span><button class="btn btn-sm btn-light" id="logout">Sair</button></div>
+      </header>
+
+      <section id="view-dashboard" class="view active">
+        <div class="stat-grid">
+          <article class="stat-card"><i class="bi bi-people"></i><span>Total de alunos</span><strong id="totalAlunos">0</strong></article>
+          <article class="stat-card"><i class="bi bi-journal-text"></i><span>Total de historicos</span><strong id="totalHistoricos">0</strong></article>
+          <article class="stat-card"><i class="bi bi-award"></i><span>Total de certificados</span><strong id="totalCertificados">0</strong></article>
+        </div>
+        <div class="content-grid">
+          <section class="panel"><div class="panel-head"><h2>Ultimos alunos</h2><button class="btn btn-primary btn-sm" data-action="newAluno"><i class="bi bi-plus-lg"></i> Novo</button></div><div class="table-responsive"><table class="table"><thead><tr><th>Nome</th><th>CPF</th><th></th></tr></thead><tbody id="recentAlunos"></tbody></table></div></section>
+          <section class="panel"><div class="panel-head"><h2>Ultimos historicos</h2><button class="btn btn-primary btn-sm" data-action="newHistorico"><i class="bi bi-plus-lg"></i> Novo</button></div><div class="table-responsive"><table class="table"><thead><tr><th>Aluno</th><th>Serie</th><th>Ano</th><th>Situacao</th></tr></thead><tbody id="recentHistoricos"></tbody></table></div></section>
+        </div>
+      </section>
+
+      <section id="view-alunos" class="view">
+        <section class="panel">
+          <div class="panel-head"><div class="search-box"><i class="bi bi-search"></i><input id="searchAluno" class="form-control" placeholder="Pesquisar aluno"></div><button class="btn btn-primary" data-action="newAluno"><i class="bi bi-person-plus"></i> Cadastrar aluno</button></div>
+          <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Nome</th><th>Nascimento</th><th>Mae</th><th>CPF</th><th>Telefone</th><th class="text-end">Acoes</th></tr></thead><tbody id="alunosTable"></tbody></table></div>
+        </section>
+      </section>
+
+      <section id="view-detalhe" class="view">
+        <section class="panel">
+          <div class="detail-head">
+            <button class="btn btn-light" data-view-target="alunos"><i class="bi bi-arrow-left"></i></button>
+            <div><h2 id="detailName">Aluno</h2><p id="detailMeta"></p></div>
+            <div class="detail-actions">
+              <button class="btn btn-outline-primary" id="editDetail"><i class="bi bi-pencil"></i> Editar</button>
+              <button class="btn btn-primary" id="newHistoryDetail"><i class="bi bi-journal-plus"></i> Novo historico</button>
+              <button class="btn btn-success" id="newCertificateDetail"><i class="bi bi-award"></i> Certificado</button>
+              <button class="btn btn-outline-dark" id="printHistoryDetail"><i class="bi bi-printer"></i> Imprimir</button>
+            </div>
+          </div>
+          <div class="info-grid" id="detailInfo"></div>
+        </section>
+        <div class="content-grid">
+          <section class="panel"><h2>Historicos</h2><div class="table-responsive"><table class="table"><thead><tr><th>Tipo</th><th>Serie</th><th>Ano</th><th>Situacao</th><th></th></tr></thead><tbody id="detailHistoricos"></tbody></table></div></section>
+          <section class="panel"><h2>Certificados</h2><div class="table-responsive"><table class="table"><thead><tr><th>Etapa</th><th>Conclusao</th><th>Emissao</th><th></th></tr></thead><tbody id="detailCertificados"></tbody></table></div></section>
+        </div>
+      </section>
+
+      <section id="view-historicos" class="view">
+        <section class="panel"><div class="panel-head"><h2>Historicos por estudante</h2><button class="btn btn-primary" data-action="newHistorico"><i class="bi bi-journal-plus"></i> Novo historico</button></div><div class="table-responsive"><table class="table"><thead><tr><th>Aluno</th><th>Etapas cadastradas</th><th>Ultimo ano</th><th>Situacao atual</th><th class="text-end">Acoes</th></tr></thead><tbody id="historicosTable"></tbody></table></div></section>
+      </section>
+
+      <section id="view-usuarios" class="view">
+        <section class="panel">
+          <div class="panel-head"><h2>Usuarios autorizados</h2><span class="text-muted">Controle de acesso online</span></div>
+          <form id="usuarioForm" class="row g-3 align-items-end mb-3">
+            <input type="hidden" name="id">
+            <div class="col-md-4"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
+            <div class="col-md-3"><label class="form-label">Nome</label><input class="form-control" name="nome"></div>
+            <div class="col-md-2"><label class="form-label">Perfil</label><select class="form-select" name="role"><option value="admin">Administrador</option><option value="user">Usuario</option></select></div>
+            <div class="col-md-2"><label class="form-label">Status</label><select class="form-select" name="status"><option value="active">Ativo</option><option value="blocked">Bloqueado</option></select></div>
+            <div class="col-md-1"><button class="btn btn-primary w-100"><i class="bi bi-check2"></i></button></div>
+          </form>
+          <div class="table-responsive"><table class="table"><thead><tr><th>Email</th><th>Nome</th><th>Perfil</th><th>Status</th><th class="text-end">Acoes</th></tr></thead><tbody id="usuariosTable"></tbody></table></div>
+        </section>
+      </section>
+
+      <section id="view-certificados" class="view">
+        <section class="panel"><div class="panel-head"><h2>Certificados</h2><button class="btn btn-primary" data-action="newCertificado"><i class="bi bi-award"></i> Emitir certificado</button></div><div class="table-responsive"><table class="table"><thead><tr><th>Aluno</th><th>Etapa</th><th>Conclusao</th><th>Emissao</th><th class="text-end">Acoes</th></tr></thead><tbody id="certificadosTable"></tbody></table></div></section>
+      </section>
+
+      <section id="view-config" class="view">
+        <form class="panel" id="configForm">
+          <div class="panel-head"><h2>Configuracoes da escola</h2><button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar</button></div>
+          <div class="row g-3">
+            <div class="col-md-6"><label class="form-label">Nome da escola</label><input class="form-control" name="nomeEscola"></div>
+            <div class="col-md-4"><label class="form-label">Municipio</label><input class="form-control" name="municipio"></div>
+            <div class="col-md-2"><label class="form-label">UF</label><input class="form-control" name="uf" maxlength="2"></div>
+            <div class="col-md-6"><label class="form-label">Diretor(a)</label><input class="form-control" name="diretor"></div>
+            <div class="col-md-6"><label class="form-label">Secretario(a)</label><input class="form-control" name="secretario"></div>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal fade" id="alunoModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><form class="modal-content" id="alunoForm">
+    <div class="modal-header"><h5 class="modal-title">Aluno</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><input type="hidden" name="id"><div class="row g-3">
+      <div class="col-md-8"><label class="form-label">Nome</label><input class="form-control" name="nome" required></div><div class="col-md-4"><label class="form-label">Data de nascimento</label><input type="date" class="form-control" name="dataNascimento" required></div>
+      <div class="col-md-4"><label class="form-label">Naturalidade</label><input class="form-control" name="naturalidade"></div><div class="col-md-2"><label class="form-label">UF</label><input class="form-control" name="uf" maxlength="2"></div><div class="col-md-3"><label class="form-label">Nacionalidade</label><input class="form-control" name="nacionalidade" value="Brasileira"></div><div class="col-md-3"><label class="form-label">Sexo</label><select class="form-select" name="sexo"><option></option><option>Feminino</option><option>Masculino</option><option>Nao informado</option></select></div>
+      <div class="col-md-6"><label class="form-label">Mae</label><input class="form-control" name="mae" required></div><div class="col-md-6"><label class="form-label">Pai</label><input class="form-control" name="pai"></div>
+      <div class="col-md-3"><label class="form-label">RG</label><input class="form-control" name="rg"></div><div class="col-md-3"><label class="form-label">Orgao expedidor</label><input class="form-control" name="orgaoExpedidor"></div><div class="col-md-2"><label class="form-label">UF RG</label><input class="form-control" name="ufRg" maxlength="2"></div><div class="col-md-4"><label class="form-label">CPF</label><input class="form-control" name="cpf"></div>
+      <div class="col-md-6"><label class="form-label">Endereco</label><input class="form-control" name="endereco"></div><div class="col-md-3"><label class="form-label">Telefone</label><input class="form-control" name="telefone"></div><div class="col-md-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email"></div>
+      <div class="col-12"><label class="form-label">Observacoes</label><textarea class="form-control" name="observacoes" rows="3"></textarea></div>
+    </div></div>
+    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Salvar</button></div>
+  </form></div></div>
+
+  <div class="modal fade" id="historicoModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><form class="modal-content" id="historicoForm">
+    <div class="modal-header"><h5 class="modal-title">Historico Escolar</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><input type="hidden" name="id"><div class="row g-3">
+      <div class="col-md-5"><label class="form-label">Aluno</label><select class="form-select" name="alunoId" required></select></div><div class="col-md-3"><label class="form-label">Tipo</label><select class="form-select" name="tipo" required><option>Ensino Fundamental</option><option>Ensino Medio</option></select></div><div class="col-md-2"><label class="form-label">Ano letivo</label><input class="form-control" name="anoLetivo" required></div><div class="col-md-2"><label class="form-label">Serie</label><select class="form-select" name="serie" required></select></div>
+      <div class="col-md-5"><label class="form-label">Escola</label><input class="form-control" name="escola" required></div><div class="col-md-3"><label class="form-label">Municipio</label><input class="form-control" name="municipio"></div><div class="col-md-1"><label class="form-label">UF</label><input class="form-control" name="uf" maxlength="2"></div><div class="col-md-3"><label class="form-label">Situacao</label><select class="form-select" name="situacao" required></select></div>
+      <div class="col-md-3"><label class="form-label">Dias letivos</label><input type="number" class="form-control" name="diasLetivos"></div><div class="col-md-3"><label class="form-label">Carga horaria anual</label><input type="number" class="form-control" name="chAnual"></div><div class="col-md-3"><label class="form-label">Faltas</label><input type="number" class="form-control" name="faltas"></div><div class="col-12"><label class="form-label">Observacoes</label><textarea class="form-control" name="observacoes" rows="2"></textarea></div>
+      <div class="col-12"><hr><h6>Campos do modelo de impressao</h6></div>
+      <div class="col-md-3"><label class="form-label">Codigo INEP</label><input class="form-control" name="codigoInep"></div><div class="col-md-3"><label class="form-label">Entidade mantenedora</label><input class="form-control" name="entidadeMantenedora"></div><div class="col-md-3"><label class="form-label">Ato de autorizacao</label><input class="form-control" name="atoAutorizacao"></div><div class="col-md-3"><label class="form-label">Ato de criacao</label><input class="form-control" name="atoCriacao"></div>
+      <div class="col-md-3"><label class="form-label">Regime</label><input class="form-control" name="regime" placeholder="Anual"></div><div class="col-md-3"><label class="form-label">Turno</label><input class="form-control" name="turno"></div><div class="col-md-3"><label class="form-label">Modalidade</label><input class="form-control" name="modalidade"></div><div class="col-md-3"><label class="form-label">Resultado final</label><input class="form-control" name="resultadoFinal"></div>
+    </div><div class="notes-head"><h6>Disciplinas e notas</h6><button type="button" class="btn btn-sm btn-outline-primary" id="addNota"><i class="bi bi-plus-lg"></i> Adicionar disciplina</button></div><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Disciplina</th><th>Nota</th><th>Carga horaria</th><th></th></tr></thead><tbody id="notasBody"></tbody></table></div></div>
+    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Salvar</button></div>
+  </form></div></div>
+
+  <div class="modal fade" id="certificadoModal" tabindex="-1"><div class="modal-dialog"><form class="modal-content" id="certificadoForm">
+    <div class="modal-header"><h5 class="modal-title">Certificado</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><div class="row g-3"><div class="col-12"><label class="form-label">Aluno</label><select class="form-select" name="alunoId" required></select></div><div class="col-md-6"><label class="form-label">Data de conclusao</label><input type="date" class="form-control" name="dataConclusao" required></div><div class="col-md-6"><label class="form-label">Etapa</label><select class="form-select" name="etapa" required><option>Ensino Fundamental</option><option>Ensino Medio</option></select></div></div></div>
+    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Emitir</button></div>
+  </form></div></div>
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3"><div id="appToast" class="toast"><div class="toast-header"><strong class="me-auto">HE - Online</strong><button type="button" class="btn-close" data-bs-dismiss="toast"></button></div><div class="toast-body"></div></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

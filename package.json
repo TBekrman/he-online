@@ -1,9 +1,13 @@
 {
   "name": "he-online",
   "version": "1.0.0",
-  "description": "Sistema web para gerenciamento de historicos escolares com Google Apps Script e Google Sheets.",
-  "main": "apps-script/WebApp.gs",
+  "description": "Sistema web para gerenciamento de historicos escolares com Firebase Hosting e Cloud Firestore.",
+  "main": "public/index.html",
   "scripts": {
+    "firebase:login": "firebase login",
+    "firebase:init": "firebase init",
+    "firebase:serve": "firebase emulators:start",
+    "firebase:deploy": "firebase deploy",
     "login": "clasp login",
     "create": "clasp create --type webapp --title \"HE - Online\" --rootDir .",
     "push": "clasp push",
@@ -13,7 +17,8 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@google/clasp": "^2.4.2"
+    "@google/clasp": "^2.4.2",
+    "firebase-tools": "^13.35.1"
   },
   "author": "",
   "license": "MIT"

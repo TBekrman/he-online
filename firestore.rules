@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function activeUser() {
+      return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) && profile().data.status == 'active';
+    }
+
+    function admin() {
+      return activeUser() && profile().data.role == 'admin';
+    }
+
+    match /alunos/{docId} {
+      allow read, create, update, delete: if activeUser();
+    }
+
+    match /historicos/{docId} {
+      allow read, create, update, delete: if activeUser();
+    }
+
+    match /notas/{docId} {
+      allow read, create, update, delete: if activeUser();
+    }
+
+    match /certificados/{docId} {
+      allow read, create, update, delete: if activeUser();
+    }
+
+    match /config/{docId} {
+      allow read, create, update, delete: if activeUser();
+    }
+
+    match /usuarios/{docId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && (docId == request.auth.uid || admin());
+      allow update, delete: if admin() || (signedIn() && docId == request.auth.uid);
+    }
+  }
+}

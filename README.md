@@ -1,127 +1,135 @@
 # HE - Online
 
-Sistema web para gerenciamento de historicos escolares, inspirado no fluxo de gestao escolar do SIMADE/MG, usando Google Apps Script, Google Sheets, Google Drive e frontend HTML/CSS/Bootstrap/JavaScript.
+Sistema web para gerenciamento de historicos escolares, agora preparado para Firebase Hosting, Firebase Authentication e Cloud Firestore.
 
 ## Recursos
 
-- Dashboard com totais e ultimos registros.
+- Dashboard com total de alunos, historicos e certificados.
 - CRUD completo de alunos.
 - Ficha do aluno com dados pessoais, historicos e certificados.
-- Cadastro de historicos por aluno, etapa, serie, situacao, faltas e carga horaria.
+- Cadastro de historicos por aluno, etapa, serie, escola, situacao, faltas e carga horaria.
 - Lancamento de disciplinas, notas e carga horaria.
 - Emissao, listagem, reimpressao e exclusao de certificados.
 - Configuracoes institucionais usadas nas impressoes.
-- Criacao automatica das abas `ALUNOS`, `HISTORICOS`, `NOTAS`, `CERTIFICADOS` e `CONFIG`.
-- Modulo de impressao com visualizacao em nova janela e botao de imprimir/exportar PDF pelo navegador.
-- Separacao entre banco, services, web app e frontend.
+- Impressao de historico e certificado com opcao de salvar como PDF pelo navegador.
+- Login com Firebase Authentication por email/senha e conta Google.
+- Gerenciamento online de usuarios por administradores.
+- Banco de dados no Cloud Firestore.
 
-## Estrutura
+## Estrutura Firebase
 
 ```text
-apps-script/
-  Config.gs
-  Database.gs
-  Setup.gs
-  Menu.gs
-  WebApp.gs
-  AlunoService.gs
-  HistoricoService.gs
-  NotaService.gs
-  CertificadoService.gs
-  PdfService.gs
-  ConfigService.gs
-
-frontend/
+public/
   index.html
-  dashboard.html
-  alunos.html
-  alunoDetalhe.html
-  historico.html
-  certificados.html
-  configuracoes.html
-  studentForm.html
-  historyForm.html
-  certificateForm.html
-  css.html
-  js.html
+  styles.css
+  app.js
+
+firebase.json
+firestore.rules
+firestore.indexes.json
 ```
 
-## Banco de Dados
+As pastas `apps-script/` e `frontend/` continuam no repositorio como versao anterior para Google Apps Script, mas a versao Firebase usa a pasta `public/`.
 
-O banco usa Google Sheets. Ao abrir o sistema ou executar `setup()`, as abas sao criadas automaticamente com os cabecalhos exigidos:
+## Banco no Firestore
 
-- `ALUNOS`
-- `HISTORICOS`
-- `NOTAS`
-- `CERTIFICADOS`
-- `CONFIG`
+Colecoes usadas:
 
-O nome sugerido para a planilha e `Modulo: Historico Escolar Online`.
+```text
+alunos
+historicos
+notas
+certificados
+config/escola
+```
 
-## Instalar pelo GitHub
+As regras em `firestore.rules` permitem acesso apenas para usuarios autenticados.
 
-1. Crie um repositorio no GitHub e envie estes arquivos.
-2. Instale o Node.js LTS.
-3. No terminal, dentro do projeto, execute:
+## Configurar Firebase
+
+1. Acesse o Firebase Console:
+
+```text
+https://console.firebase.google.com
+```
+
+2. Crie um projeto.
+3. Ative **Authentication > Sign-in method > Email/password**.
+4. Ative tambem **Authentication > Sign-in method > Google**.
+5. Ative **Firestore Database** em modo de producao.
+6. Crie um app Web em **Configuracoes do projeto > Seus apps**.
+7. Copie a configuracao do SDK Web. Ela tem este formato:
+
+```js
+const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
+};
+```
+
+Para producao, edite `public/firebase-config.js` e substitua `null` pelo objeto `firebaseConfig`. Tambem e possivel abrir o sistema e colar essa configuracao na tela inicial; nesse caso ela fica salva no navegador.
+
+## Rodar Localmente
+
+Instale as dependencias:
 
 ```bash
 npm install
-npm run login
 ```
 
-4. Crie o projeto Apps Script:
+Faça login:
 
 ```bash
-npm run create
+npm run firebase:login
 ```
 
-Se voce ja tiver um projeto Apps Script existente, execute `clasp clone SCRIPT_ID` em outra pasta e copie o `scriptId` gerado para este projeto.
-
-5. Envie os arquivos para o Apps Script:
+Rode os emuladores:
 
 ```bash
-npm run push
+npm run firebase:serve
 ```
 
-6. Abra o editor do Apps Script:
+## Publicar no Firebase Hosting
+
+Se ainda nao tiver vinculado a pasta ao projeto Firebase:
 
 ```bash
-npm run open
+firebase use --add
 ```
 
-7. No editor, execute a funcao `setup` uma vez e autorize as permissoes.
-8. Implante como Web App em `Implantar > Nova implantacao > Aplicativo da Web`.
-
-Configuracao recomendada:
-
-- Executar como: usuario que esta implantando.
-- Quem tem acesso: conforme sua necessidade institucional.
-
-## Uso na Planilha
-
-Depois de vincular o script a uma planilha, recarregue a planilha. O menu `HE - Online` exibira:
-
-- Abrir sistema
-- Inicializar banco
-- Sobre
-
-## Publicacao
-
-Para criar uma implantacao pelo terminal:
+Depois publique:
 
 ```bash
-npm run deploy
+npm run firebase:deploy
 ```
 
-Para atualizar o codigo apos alteracoes:
+O Firebase mostrara a URL publica do site ao final do deploy.
+
+## Usuarios e Administradores
+
+O primeiro usuario que entrar no sistema sera registrado como `admin`. Depois disso, acesse o menu **Usuarios** para autorizar, bloquear ou promover outros usuarios.
+
+Usuarios podem entrar com email/senha ou com e-mail Google. Para usar Google, o provedor precisa estar ativado no Firebase Authentication.
+
+## Historico Consolidado
+
+Cada estudante fica cadastrado uma unica vez. As etapas/series sao lancadas como historicos vinculados ao mesmo aluno. A impressao do historico junta todas as etapas em um unico documento, com dados da escola, identificacao do aluno, estudos realizados e matriz de notas/carga horaria.
+
+## Fluxo com GitHub
+
+Depois de alterar o projeto:
 
 ```bash
-npm run push
+git add .
+git commit -m "Migra sistema para Firebase"
+git push
+npm run firebase:deploy
 ```
 
-## Observacoes Tecnicas
+## Observacao Sobre PDF
 
-- O arquivo `.claspignore` publica somente `apps-script/`, `frontend/` e `appsscript.json`.
-- A pasta `src/` antiga, se existir no repositorio, nao participa do deploy.
-- Os dados sao persistidos na planilha definida nas propriedades do script.
-- A impressao abre HTML em nova janela; use o dialogo do navegador para imprimir ou salvar como PDF.
+A versao Firebase gera a visualizacao de impressao em HTML. Para exportar PDF, use o botao **Imprimir / salvar PDF** e selecione **Salvar como PDF** no navegador.
