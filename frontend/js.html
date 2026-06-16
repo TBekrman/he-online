@@ -1,0 +1,303 @@
+<script>
+const state = { boot: null, alunos: [], historicos: [], certificados: [], selectedAlunoId: null };
+const modal = {};
+
+document.addEventListener('DOMContentLoaded', () => {
+  modal.student = new bootstrap.Modal(document.getElementById('studentModal'));
+  modal.history = new bootstrap.Modal(document.getElementById('historyModal'));
+  modal.certificate = new bootstrap.Modal(document.getElementById('certificateModal'));
+  bindNavigation();
+  bindForms();
+  bindActions();
+  loadApp();
+});
+
+function gas(name, ...args) {
+  return new Promise((resolve, reject) => {
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args);
+  });
+}
+
+function toast(message) {
+  const el = document.getElementById('app-toast');
+  el.querySelector('.toast-body').textContent = message;
+  bootstrap.Toast.getOrCreateInstance(el).show();
+}
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}
+
+function formData(form) {
+  return Object.fromEntries(new FormData(form).entries());
+}
+
+function fillForm(form, data) {
+  form.reset();
+  [...form.elements].forEach((field) => {
+    if (!field.name) return;
+    field.value = data && data[field.name] !== undefined ? toInputDate(data[field.name]) : '';
+  });
+}
+
+function toInputDate(value) {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  const match = String(value).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : value;
+}
+
+async function loadApp() {
+  state.boot = await gas('apiBootstrap');
+  document.getElementById('current-user').textContent = state.boot.user;
+  fillConfig();
+  await refreshAll();
+  showView('dashboard');
+}
+
+async function refreshAll() {
+  const [alunos, historicos, certificados] = await Promise.all([
+    gas('apiListarAlunos'),
+    gas('apiListarHistoricos'),
+    gas('apiListarCertificados')
+  ]);
+  state.alunos = alunos || [];
+  state.historicos = historicos || [];
+  state.certificados = certificados || [];
+  renderStudents();
+  renderHistories();
+  renderCertificates();
+  renderDashboard();
+  refreshAlunoSelects();
+}
+
+function bindNavigation() {
+  document.querySelectorAll('[data-view]').forEach((btn) => btn.addEventListener('click', () => showView(btn.dataset.view)));
+  document.querySelectorAll('[data-view-target]').forEach((btn) => btn.addEventListener('click', () => showView(btn.dataset.viewTarget)));
+}
+
+function bindActions() {
+  document.body.addEventListener('click', async (event) => {
+    const actionEl = event.target.closest('[data-action]');
+    if (!actionEl) return;
+    const action = actionEl.dataset.action;
+    const id = actionEl.dataset.id;
+    if (action === 'new-student') openStudent();
+    if (action === 'edit-student') openStudent(state.alunos.find((item) => item.ID === id));
+    if (action === 'delete-student') deleteStudent(id);
+    if (action === 'detail-student') openStudentDetail(id);
+    if (action === 'new-history') openHistory(id ? { ALUNO_ID: id } : null);
+    if (action === 'edit-history') openHistory(await gas('apiObterHistorico', id));
+    if (action === 'delete-history') deleteHistory(id);
+    if (action === 'new-certificate') openCertificate(id ? { ALUNO_ID: id } : null);
+    if (action === 'print-certificate') printCertificate(id);
+    if (action === 'pdf-certificate') exportCertificatePdf(id);
+    if (action === 'delete-certificate') deleteCertificate(id);
+  });
+
+  document.getElementById('student-search').addEventListener('input', renderStudents);
+  document.getElementById('add-note').addEventListener('click', () => addNoteRow({}));
+  document.querySelector('#historyForm [name="TIPO"]').addEventListener('change', updateSeriesAndNotes);
+  document.getElementById('detail-edit').addEventListener('click', () => openStudent(state.alunos.find((item) => item.ID === state.selectedAlunoId)));
+  document.getElementById('detail-new-history').addEventListener('click', () => openHistory({ ALUNO_ID: state.selectedAlunoId }));
+  document.getElementById('detail-certificate').addEventListener('click', () => openCertificate({ ALUNO_ID: state.selectedAlunoId }));
+  document.getElementById('detail-print').addEventListener('click', () => printHistory(state.selectedAlunoId));
+  document.getElementById('detail-pdf').addEventListener('click', () => exportHistoryPdf(state.selectedAlunoId));
+}
+
+function bindForms() {
+  document.getElementById('studentForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await gas('apiSalvarAluno', formData(event.currentTarget));
+    modal.student.hide();
+    await refreshAll();
+    toast('Aluno salvo com sucesso.');
+  });
+
+  document.getElementById('historyForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const payload = formData(event.currentTarget);
+    payload.NOTAS = [...document.querySelectorAll('#notes-body tr')].map((row) => ({
+      DISCIPLINA: row.querySelector('[name="DISCIPLINA"]').value,
+      NOTA: row.querySelector('[name="NOTA"]').value,
+      CARGA_HORARIA: row.querySelector('[name="CARGA_HORARIA"]').value
+    }));
+    await gas('apiSalvarHistorico', payload);
+    modal.history.hide();
+    await refreshAll();
+    if (state.selectedAlunoId) await openStudentDetail(state.selectedAlunoId);
+    toast('Historico salvo com sucesso.');
+  });
+
+  document.getElementById('certificateForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await gas('apiEmitirCertificado', formData(event.currentTarget));
+    modal.certificate.hide();
+    await refreshAll();
+    if (state.selectedAlunoId) await openStudentDetail(state.selectedAlunoId);
+    toast('Certificado emitido com sucesso.');
+  });
+
+  document.getElementById('configForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    state.boot.config = await gas('apiSalvarConfig', formData(event.currentTarget));
+    toast('Configuracoes salvas.');
+  });
+}
+
+function showView(view) {
+  document.querySelectorAll('.view').forEach((el) => el.classList.remove('active'));
+  document.querySelectorAll('[data-view]').forEach((el) => el.classList.toggle('active', el.dataset.view === view));
+  document.getElementById(`view-${view}`).classList.add('active');
+  const titles = {
+    dashboard: ['Dashboard', 'Visao geral do modulo de historico escolar'],
+    alunos: ['Alunos', 'Cadastro, consulta e manutencao dos alunos'],
+    alunoDetalhe: ['Ficha do aluno', 'Dados pessoais, historicos e certificados'],
+    historico: ['Historicos', 'Lancamento de series, notas e situacao escolar'],
+    certificados: ['Certificados', 'Emissao e reimpressao de certificados'],
+    configuracoes: ['Configuracoes', 'Dados institucionais usados nas impressoes']
+  };
+  document.getElementById('page-title').textContent = titles[view][0];
+  document.getElementById('page-subtitle').textContent = titles[view][1];
+}
+
+function renderDashboard() {
+  document.getElementById('dash-alunos').textContent = state.alunos.length;
+  document.getElementById('dash-historicos').textContent = state.historicos.length;
+  document.getElementById('dash-certificados').textContent = state.certificados.length;
+  document.getElementById('dash-ultimos-alunos').innerHTML = rowsOrEmpty(state.alunos.slice(-5).reverse().map((a) => `<tr><td>${esc(a.NOME)}</td><td>${esc(a.CPF)}</td><td>${esc(a.DATA_CADASTRO)}</td><td class="text-end"><button class="btn btn-sm btn-light" data-action="detail-student" data-id="${esc(a.ID)}"><i class="bi bi-eye"></i></button></td></tr>`));
+  document.getElementById('dash-ultimos-historicos').innerHTML = rowsOrEmpty(state.historicos.slice(-5).reverse().map((h) => `<tr><td>${esc(h.ALUNO_NOME)}</td><td>${esc(h.SERIE)}</td><td>${esc(h.ANO_LETIVO)}</td><td>${esc(h.SITUACAO)}</td></tr>`));
+}
+
+function renderStudents() {
+  const term = document.getElementById('student-search')?.value.toLowerCase() || '';
+  const list = state.alunos.filter((a) => [a.NOME, a.CPF, a.RG, a.MAE].join(' ').toLowerCase().includes(term));
+  document.getElementById('students-table').innerHTML = rowsOrEmpty(list.map((a) => `<tr><td><strong>${esc(a.NOME)}</strong></td><td>${esc(a.DATA_NASCIMENTO)}</td><td>${esc(a.MAE)}</td><td>${esc(a.CPF)}</td><td>${esc(a.TELEFONE)}</td><td class="actions"><button class="btn btn-sm btn-light" data-action="detail-student" data-id="${esc(a.ID)}"><i class="bi bi-eye"></i></button><button class="btn btn-sm btn-outline-primary" data-action="edit-student" data-id="${esc(a.ID)}"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" data-action="delete-student" data-id="${esc(a.ID)}"><i class="bi bi-trash"></i></button></td></tr>`));
+}
+
+function renderHistories() {
+  document.getElementById('histories-table').innerHTML = rowsOrEmpty(state.historicos.map((h) => `<tr><td>${esc(h.ALUNO_NOME)}</td><td>${esc(h.TIPO)}</td><td>${esc(h.SERIE)}</td><td>${esc(h.ANO_LETIVO)}</td><td>${esc(h.ESCOLA)}</td><td>${esc(h.SITUACAO)}</td><td class="actions"><button class="btn btn-sm btn-outline-primary" data-action="edit-history" data-id="${esc(h.ID)}"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" data-action="delete-history" data-id="${esc(h.ID)}"><i class="bi bi-trash"></i></button></td></tr>`));
+}
+
+function renderCertificates() {
+  document.getElementById('certificates-table').innerHTML = rowsOrEmpty(state.certificados.map((c) => `<tr><td>${esc(c.ALUNO_NOME)}</td><td>${esc(c.ETAPA)}</td><td>${esc(c.DATA_CONCLUSAO)}</td><td>${esc(c.DATA_EMISSAO)}</td><td class="actions"><button class="btn btn-sm btn-outline-dark" data-action="print-certificate" data-id="${esc(c.ID)}"><i class="bi bi-printer"></i></button><button class="btn btn-sm btn-outline-dark" data-action="pdf-certificate" data-id="${esc(c.ID)}"><i class="bi bi-file-earmark-pdf"></i></button><button class="btn btn-sm btn-outline-danger" data-action="delete-certificate" data-id="${esc(c.ID)}"><i class="bi bi-trash"></i></button></td></tr>`));
+}
+
+function rowsOrEmpty(rows) {
+  return rows.length ? rows.join('') : '<tr><td colspan="9" class="empty">Nenhum registro encontrado</td></tr>';
+}
+
+function refreshAlunoSelects() {
+  const options = '<option value=""></option>' + state.alunos.map((a) => `<option value="${esc(a.ID)}">${esc(a.NOME)}</option>`).join('');
+  document.querySelector('#historyForm [name="ALUNO_ID"]').innerHTML = options;
+  document.querySelector('#certificateForm [name="ALUNO_ID"]').innerHTML = options;
+}
+
+function fillConfig() {
+  const form = document.getElementById('configForm');
+  Object.entries(state.boot.config || {}).forEach(([key, value]) => {
+    const field = form.elements[key];
+    if (field) field.value = value;
+  });
+}
+
+function openStudent(data = {}) {
+  fillForm(document.getElementById('studentForm'), data);
+  modal.student.show();
+}
+
+async function openStudentDetail(id) {
+  state.selectedAlunoId = id;
+  const ficha = await gas('apiObterAluno', id);
+  const a = ficha.aluno;
+  document.getElementById('detail-name').textContent = a.NOME;
+  document.getElementById('detail-meta').textContent = `${a.DATA_NASCIMENTO || ''} | ${a.NATURALIDADE || ''}/${a.UF || ''}`;
+  document.getElementById('detail-info').innerHTML = ['MAE', 'PAI', 'RG', 'CPF', 'ENDERECO', 'TELEFONE', 'EMAIL', 'OBSERVACOES'].map((key) => `<div class="info-item"><span>${key}</span><strong>${esc(a[key])}</strong></div>`).join('');
+  document.getElementById('detail-histories').innerHTML = rowsOrEmpty(ficha.historicos.map((h) => `<tr><td>${esc(h.TIPO)}</td><td>${esc(h.SERIE)}</td><td>${esc(h.ANO_LETIVO)}</td><td>${esc(h.SITUACAO)}</td><td class="actions"><button class="btn btn-sm btn-outline-primary" data-action="edit-history" data-id="${esc(h.ID)}"><i class="bi bi-pencil"></i></button></td></tr>`));
+  document.getElementById('detail-certificates').innerHTML = rowsOrEmpty(ficha.certificados.map((c) => `<tr><td>${esc(c.ETAPA)}</td><td>${esc(c.DATA_CONCLUSAO)}</td><td>${esc(c.DATA_EMISSAO)}</td><td class="actions"><button class="btn btn-sm btn-outline-dark" data-action="print-certificate" data-id="${esc(c.ID)}"><i class="bi bi-printer"></i></button><button class="btn btn-sm btn-outline-dark" data-action="pdf-certificate" data-id="${esc(c.ID)}"><i class="bi bi-file-earmark-pdf"></i></button></td></tr>`));
+  showView('alunoDetalhe');
+}
+
+function openHistory(data = {}) {
+  fillForm(document.getElementById('historyForm'), data || {});
+  fillSelect(document.querySelector('#historyForm [name="SITUACAO"]'), state.boot.options.situacoes, data && data.SITUACAO);
+  updateSeriesAndNotes(data && data.NOTAS, data && data.SERIE);
+  modal.history.show();
+}
+
+function updateSeriesAndNotes(existingNotes, selectedSerie) {
+  const type = document.querySelector('#historyForm [name="TIPO"]').value;
+  const series = type === 'Ensino Medio' ? state.boot.options.medioSeries : state.boot.options.fundamentalSeries;
+  const disciplines = type === 'Ensino Medio' ? state.boot.options.disciplinasMedio : state.boot.options.disciplinasFundamental;
+  fillSelect(document.querySelector('#historyForm [name="SERIE"]'), series, selectedSerie || document.querySelector('#historyForm [name="SERIE"]').value);
+  document.getElementById('notes-body').innerHTML = '';
+  const notes = Array.isArray(existingNotes) && existingNotes.length ? existingNotes : disciplines.map((DISCIPLINA) => ({ DISCIPLINA, NOTA: '', CARGA_HORARIA: '' }));
+  notes.forEach(addNoteRow);
+}
+
+function addNoteRow(note) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input class="form-control form-control-sm" name="DISCIPLINA" value="${esc(note.DISCIPLINA)}"></td><td><input class="form-control form-control-sm" name="NOTA" value="${esc(note.NOTA)}"></td><td><input type="number" class="form-control form-control-sm" name="CARGA_HORARIA" value="${esc(note.CARGA_HORARIA)}"></td><td class="text-end"><button type="button" class="btn btn-sm btn-light"><i class="bi bi-x-lg"></i></button></td>`;
+  tr.querySelector('button').addEventListener('click', () => tr.remove());
+  document.getElementById('notes-body').appendChild(tr);
+}
+
+function openCertificate(data = {}) {
+  fillForm(document.getElementById('certificateForm'), data || {});
+  modal.certificate.show();
+}
+
+function fillSelect(select, values, selected) {
+  select.innerHTML = values.map((value) => `<option ${value === selected ? 'selected' : ''}>${esc(value)}</option>`).join('');
+}
+
+async function deleteStudent(id) {
+  if (!confirm('Excluir aluno e seus historicos/certificados?')) return;
+  await gas('apiExcluirAluno', id);
+  await refreshAll();
+  toast('Aluno excluido.');
+}
+
+async function deleteHistory(id) {
+  if (!confirm('Excluir historico?')) return;
+  await gas('apiExcluirHistorico', id);
+  await refreshAll();
+  toast('Historico excluido.');
+}
+
+async function deleteCertificate(id) {
+  if (!confirm('Excluir certificado?')) return;
+  await gas('apiExcluirCertificado', id);
+  await refreshAll();
+  toast('Certificado excluido.');
+}
+
+async function printHistory(alunoId) {
+  const html = await gas('apiImpressaoHistorico', alunoId);
+  openPrintWindow(html);
+}
+
+async function printCertificate(certificadoId) {
+  const html = await gas('apiImpressaoCertificado', certificadoId);
+  openPrintWindow(html);
+}
+
+async function exportHistoryPdf(alunoId) {
+  const file = await gas('apiPdfHistorico', alunoId);
+  window.open(file.url, '_blank');
+  toast('PDF do historico criado no Google Drive.');
+}
+
+async function exportCertificatePdf(certificadoId) {
+  const file = await gas('apiPdfCertificado', certificadoId);
+  window.open(file.url, '_blank');
+  toast('PDF do certificado criado no Google Drive.');
+}
+
+function openPrintWindow(html) {
+  const win = window.open('', '_blank');
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
+</script>

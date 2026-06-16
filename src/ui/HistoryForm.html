@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📋 Históricos Escolares - HE Online</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #007bff;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --danger: #dc3545;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .form-section h2 {
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 15px;
+        }
+        
+        .table thead {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .btn-action {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+            margin: 2px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-top: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .btn-submit {
+            padding: 10px 30px;
+            font-weight: 600;
+            border-radius: 8px;
+            margin-right: 10px;
+        }
+        
+        .alert-message {
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .disciplines-list {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .discipline-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Alerts -->
+        <div id="alertSuccess" class="alert alert-success alert-message" role="alert">
+            <i class="bi bi-check-circle"></i> <span id="successMessage"></span>
+        </div>
+        <div id="alertError" class="alert alert-danger alert-message" role="alert">
+            <i class="bi bi-exclamation-circle"></i> <span id="errorMessage"></span>
+        </div>
+        
+        <!-- Formulário -->
+        <div class="form-section">
+            <h2>➕ Novo Histórico Escolar</h2>
+            
+            <form id="historyForm">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Aluno *</label>
+                            <select class="form-control" id="alunoId" required>
+                                <option value="">Selecione um aluno...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Ano Letivo *</label>
+                            <input type="number" class="form-control" id="anoLetivo" min="1900" max="2100" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Tipo de Educação *</label>
+                            <select class="form-control" id="tipo" required onchange="updateDisciplines()">
+                                <option value="">Selecione...</option>
+                                <option value="Fundamental">Fundamental</option>
+                                <option value="Médio">Médio</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Série/Ano *</label>
+                            <select class="form-control" id="serie" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Escola</label>
+                            <input type="text" class="form-control" id="escola">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Município</label>
+                            <input type="text" class="form-control" id="municipio">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">UF</label>
+                            <input type="text" class="form-control" id="uf" maxlength="2">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Dias Letivos</label>
+                            <input type="number" class="form-control" id="diasLetivos" value="200">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Carga Horária Anual</label>
+                            <input type="number" class="form-control" id="chAnual" value="800">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Situação</label>
+                            <select class="form-control" id="situacao">
+                                <option value="Aprovado">Aprovado</option>
+                                <option value="Reprovado">Reprovado</option>
+                                <option value="Transferência">Transferência</option>
+                                <option value="Abandono">Abandono</option>
+                                <option value="Reclassificação">Reclassificação</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label class="form-label">Observações</label>
+                            <textarea class="form-control" id="observacoes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Disciplinas -->
+                <div class="mb-3">
+                    <label class="form-label">Disciplinas</label>
+                    <div class="disciplines-list" id="disciplinesList">
+                        <p class="text-muted">Selecione o tipo de educação para exibir disciplinas</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <button type="submit" class="btn btn-success btn-submit">
+                        <i class="bi bi-save"></i> Salvar Histórico
+                    </button>
+                    <button type="reset" class="btn btn-secondary btn-submit">
+                        <i class="bi bi-arrow-clockwise"></i> Limpar
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Lista -->
+        <div class="form-section">
+            <h2>📋 Históricos Cadastrados</h2>
+            
+            <div id="loading" style="display: none; text-align: center; padding: 40px;">
+                <div style="border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+                <p>Carregando...</p>
+            </div>
+            
+            <div class="table-responsive" id="historiesTableContainer" style="display: none;">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Aluno</th>
+                            <th>Ano Letivo</th>
+                            <th>Série</th>
+                            <th>Situação</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historiesTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const GRADES_FUNDAMENTAL = ['Fase Introdutória', 'Fase I', 'Fase II', 'Fase III', 'Fase IV', '6º Ano', '7º Ano', '8º Ano', '9º Ano'];
+        const GRADES_MEDIUM = ['1º Ano', '2º Ano', '3º Ano'];
+        
+        const DISCIPLINES_FUNDAMENTAL = ['Língua Portuguesa', 'Matemática', 'Ciências', 'Geografia', 'História', 'Ensino Religioso', 'Educação Física', 'Arte', 'Inglês'];
+        const DISCIPLINES_MEDIUM = ['Língua Portuguesa', 'Arte', 'Educação Física', 'Matemática', 'Física', 'Biologia', 'Química', 'História', 'Geografia', 'Sociologia', 'Filosofia'];
+        
+        // Carrega alunos
+        function loadStudents() {
+            google.script.run.withSuccessHandler(function(students) {
+                const select = document.getElementById('alunoId');
+                select.innerHTML = '<option value="">Selecione um aluno...</option>';
+                students.forEach(student => {
+                    const option = document.createElement('option');
+                    option.value = student.ID;
+                    option.textContent = student.NOME;
+                    select.appendChild(option);
+                });
+            }).listStudents();
+        }
+        
+        // Atualiza disciplinas
+        function updateDisciplines() {
+            const tipo = document.getElementById('tipo').value;
+            const serieSelect = document.getElementById('serie');
+            const disciplinesList = document.getElementById('disciplinesList');
+            
+            serieSelect.innerHTML = '<option value="">Selecione...</option>';
+            
+            if (tipo === 'Fundamental') {
+                GRADES_FUNDAMENTAL.forEach(grade => {
+                    const option = document.createElement('option');
+                    option.value = grade;
+                    option.textContent = grade;
+                    serieSelect.appendChild(option);
+                });
+                
+                disciplinesList.innerHTML = DISCIPLINES_FUNDAMENTAL.map(d => `
+                    <div class="discipline-item">
+                        <span>${d}</span>
+                        <input type="number" class="form-control" style="width: 100px;" placeholder="Nota">
+                    </div>
+                `).join('');
+            } else if (tipo === 'Médio') {
+                GRADES_MEDIUM.forEach(grade => {
+                    const option = document.createElement('option');
+                    option.value = grade;
+                    option.textContent = grade;
+                    serieSelect.appendChild(option);
+                });
+                
+                disciplinesList.innerHTML = DISCIPLINES_MEDIUM.map(d => `
+                    <div class="discipline-item">
+                        <span>${d}</span>
+                        <input type="number" class="form-control" style="width: 100px;" placeholder="Nota">
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // Salva histórico
+        document.getElementById('historyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const historyData = {
+                alunoId: document.getElementById('alunoId').value,
+                anoLetivo: document.getElementById('anoLetivo').value,
+                tipo: document.getElementById('tipo').value,
+                serie: document.getElementById('serie').value,
+                escola: document.getElementById('escola').value,
+                municipio: document.getElementById('municipio').value,
+                uf: document.getElementById('uf').value,
+                diasLetivos: document.getElementById('diasLetivos').value,
+                chAnual: document.getElementById('chAnual').value,
+                situacao: document.getElementById('situacao').value,
+                observacoes: document.getElementById('observacoes').value
+            };
+            
+            google.script.run.withSuccessHandler(function(result) {
+                showSuccess('Histórico salvo com sucesso!');
+                document.getElementById('historyForm').reset();
+            }).withFailureHandler(function(error) {
+                showError(error.toString());
+            }).addHistory(historyData);
+        });
+        
+        function showSuccess(msg) {
+            document.getElementById('successMessage').textContent = msg;
+            document.getElementById('alertSuccess').style.display = 'block';
+            setTimeout(() => document.getElementById('alertSuccess').style.display = 'none', 5000);
+        }
+        
+        function showError(msg) {
+            document.getElementById('errorMessage').textContent = msg;
+            document.getElementById('alertError').style.display = 'block';
+            setTimeout(() => document.getElementById('alertError').style.display = 'none', 5000);
+        }
+        
+        // Funções expostas
+        function addHistory(data) {
+            return HistoryController.addHistory(data);
+        }
+        
+        function listStudents() {
+            return StudentsController.listStudents();
+        }
+        
+        loadStudents();
+    </script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📜 Certificados - HE Online</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #007bff;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --danger: #dc3545;
+            --info: #17a2b8;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .form-section h2 {
+            color: var(--danger);
+            font-weight: bold;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--danger);
+            padding-bottom: 15px;
+        }
+        
+        .table thead {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .btn-action {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+            margin: 2px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-top: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .btn-submit {
+            padding: 10px 30px;
+            font-weight: 600;
+            border-radius: 8px;
+            margin-right: 10px;
+        }
+        
+        .alert-message {
+            margin-bottom: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Alerts -->
+        <div id="alertSuccess" class="alert alert-success alert-message" role="alert">
+            <i class="bi bi-check-circle"></i> <span id="successMessage"></span>
+        </div>
+        <div id="alertError" class="alert alert-danger alert-message" role="alert">
+            <i class="bi bi-exclamation-circle"></i> <span id="errorMessage"></span>
+        </div>
+        
+        <!-- Formulário -->
+        <div class="form-section">
+            <h2>➕ Emitir Certificado</h2>
+            
+            <form id="certificateForm">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Aluno *</label>
+                            <select class="form-control" id="alunoId" required>
+                                <option value="">Selecione um aluno...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Etapa de Conclusão *</label>
+                            <input type="text" class="form-control" id="etapa" placeholder="ex: Ensino Fundamental" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Data de Conclusão *</label>
+                            <input type="date" class="form-control" id="dataConclusao" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <button type="submit" class="btn btn-danger btn-submit">
+                        <i class="bi bi-save"></i> Emitir Certificado
+                    </button>
+                    <button type="reset" class="btn btn-secondary btn-submit">
+                        <i class="bi bi-arrow-clockwise"></i> Limpar
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Lista -->
+        <div class="form-section">
+            <h2>📜 Certificados Emitidos</h2>
+            
+            <div id="loading" style="display: none; text-align: center; padding: 40px;">
+                <div style="border: 4px solid #f3f3f3; border-top: 4px solid var(--danger); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+                <p>Carregando...</p>
+            </div>
+            
+            <div class="table-responsive" id="certificatesTableContainer" style="display: none;">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Aluno</th>
+                            <th>Etapa</th>
+                            <th>Data de Conclusão</th>
+                            <th>Data de Emissão</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="certificatesTableBody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="emptyMessage" class="alert alert-info">
+                Nenhum certificado emitido
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Carrega alunos
+        function loadStudents() {
+            google.script.run.withSuccessHandler(function(students) {
+                const select = document.getElementById('alunoId');
+                select.innerHTML = '<option value="">Selecione um aluno...</option>';
+                students.forEach(student => {
+                    const option = document.createElement('option');
+                    option.value = student.ID;
+                    option.textContent = student.NOME;
+                    select.appendChild(option);
+                });
+            }).listStudents();
+        }
+        
+        // Carrega certificados
+        function loadCertificates() {
+            document.getElementById('loading').style.display = 'block';
+            google.script.run.withSuccessHandler(function(certificates) {
+                const tbody = document.getElementById('certificatesTableBody');
+                const container = document.getElementById('certificatesTableContainer');
+                const emptyMsg = document.getElementById('emptyMessage');
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                if (!certificates || certificates.length === 0) {
+                    container.style.display = 'none';
+                    emptyMsg.style.display = 'block';
+                    return;
+                }
+                
+                tbody.innerHTML = certificates.map(cert => `
+                    <tr>
+                        <td><strong>${escapeHtml(cert.ID)}</strong></td>
+                        <td>${escapeHtml(cert.ALUNO_ID)}</td>
+                        <td>${escapeHtml(cert.ETAPA)}</td>
+                        <td>${cert.DATA_CONCLUSAO}</td>
+                        <td>${cert.DATA_EMISSAO}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info btn-action" onclick="viewCertificate('${escapeHtml(cert.ID)}')">
+                                <i class="bi bi-eye"></i> Visualizar
+                            </button>
+                            <button class="btn btn-sm btn-danger btn-action" onclick="deleteCertificate('${escapeHtml(cert.ID)}')">
+                                <i class="bi bi-trash"></i> Excluir
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                container.style.display = 'block';
+                emptyMsg.style.display = 'none';
+            }).listCertificates();
+        }
+        
+        // Salva certificado
+        document.getElementById('certificateForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const certData = {
+                alunoId: document.getElementById('alunoId').value,
+                etapa: document.getElementById('etapa').value,
+                dataConclusao: document.getElementById('dataConclusao').value
+            };
+            
+            google.script.run.withSuccessHandler(function(result) {
+                showSuccess('Certificado emitido com sucesso!');
+                document.getElementById('certificateForm').reset();
+                loadCertificates();
+            }).withFailureHandler(function(error) {
+                showError(error.toString());
+            }).issueCertificate(certData);
+        });
+        
+        // Visualiza certificado
+        function viewCertificate(certId) {
+            alert('Visualização de certificado será implementada em breve. ID: ' + certId);
+        }
+        
+        // Deleta certificado
+        function deleteCertificate(certId) {
+            if (confirm('Deseja realmente excluir este certificado?')) {
+                google.script.run.withSuccessHandler(function() {
+                    showSuccess('Certificado excluído com sucesso!');
+                    loadCertificates();
+                }).withFailureHandler(function(error) {
+                    showError(error.toString());
+                }).deleteCertificate(certId);
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function showSuccess(msg) {
+            document.getElementById('successMessage').textContent = msg;
+            document.getElementById('alertSuccess').style.display = 'block';
+            setTimeout(() => document.getElementById('alertSuccess').style.display = 'none', 5000);
+        }
+        
+        function showError(msg) {
+            document.getElementById('errorMessage').textContent = msg;
+            document.getElementById('alertError').style.display = 'block';
+            setTimeout(() => document.getElementById('alertError').style.display = 'none', 5000);
+        }
+        
+        // Funções expostas
+        function listStudents() {
+            return StudentsController.listStudents();
+        }
+        
+        function issueCertificate(data) {
+            return CertificateController.issueCertificate(data);
+        }
+        
+        function listCertificates() {
+            return CertificateController.listCertificates();
+        }
+        
+        function deleteCertificate(certId) {
+            return CertificateController.deleteCertificate(certId);
+        }
+        
+        loadStudents();
+        loadCertificates();
+    </script>
+</body>
+</html>

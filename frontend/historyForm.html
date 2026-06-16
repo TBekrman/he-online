@@ -1,0 +1,25 @@
+<input type="hidden" name="ID">
+<div class="row g-3">
+  <div class="col-md-5"><label class="form-label">Aluno</label><select class="form-select" name="ALUNO_ID" required></select></div>
+  <div class="col-md-3"><label class="form-label">Tipo</label><select class="form-select" name="TIPO" required><option>Ensino Fundamental</option><option>Ensino Medio</option></select></div>
+  <div class="col-md-2"><label class="form-label">Ano letivo</label><input class="form-control" name="ANO_LETIVO" required></div>
+  <div class="col-md-2"><label class="form-label">Serie</label><select class="form-select" name="SERIE" required></select></div>
+  <div class="col-md-5"><label class="form-label">Escola</label><input class="form-control" name="ESCOLA" required></div>
+  <div class="col-md-3"><label class="form-label">Municipio</label><input class="form-control" name="MUNICIPIO"></div>
+  <div class="col-md-1"><label class="form-label">UF</label><input class="form-control" name="UF" maxlength="2"></div>
+  <div class="col-md-3"><label class="form-label">Situacao</label><select class="form-select" name="SITUACAO" required></select></div>
+  <div class="col-md-3"><label class="form-label">Dias letivos</label><input type="number" class="form-control" name="DIAS_LETIVOS"></div>
+  <div class="col-md-3"><label class="form-label">Carga horaria anual</label><input type="number" class="form-control" name="CH_ANUAL"></div>
+  <div class="col-md-3"><label class="form-label">Faltas</label><input type="number" class="form-control" name="FALTAS"></div>
+  <div class="col-12"><label class="form-label">Observacoes</label><textarea class="form-control" name="OBSERVACOES" rows="2"></textarea></div>
+</div>
+<div class="notes-head">
+  <h6>Disciplinas e notas</h6>
+  <button type="button" class="btn btn-sm btn-outline-primary" id="add-note"><i class="bi bi-plus-lg"></i> Adicionar disciplina</button>
+</div>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Disciplina</th><th>Nota</th><th>Carga horaria</th><th></th></tr></thead>
+    <tbody id="notes-body"></tbody>
+  </table>
+</div>

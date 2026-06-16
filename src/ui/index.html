@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Dashboard - HE Online</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #007bff;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #17a2b8;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .dashboard-header {
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard-header h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .dashboard-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .stat-card.primary {
+            border-left: 5px solid var(--primary);
+        }
+        
+        .stat-card.success {
+            border-left: 5px solid var(--success);
+        }
+        
+        .stat-card.danger {
+            border-left: 5px solid var(--danger);
+        }
+        
+        .stat-card.info {
+            border-left: 5px solid var(--info);
+        }
+        
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 15px 0;
+        }
+        
+        .stat-card.success .stat-number {
+            color: var(--success);
+        }
+        
+        .stat-card.danger .stat-number {
+            color: var(--danger);
+        }
+        
+        .stat-card.info .stat-number {
+            color: var(--info);
+        }
+        
+        .stat-title {
+            font-size: 1rem;
+            color: var(--secondary);
+            font-weight: 600;
+        }
+        
+        .recent-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .recent-section h3 {
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 15px;
+        }
+        
+        .recent-item {
+            padding: 12px;
+            border-left: 4px solid var(--primary);
+            background: #f8f9fa;
+            margin-bottom: 12px;
+            border-radius: 4px;
+        }
+        
+        .recent-item-name {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .recent-item-date {
+            font-size: 0.85rem;
+            color: var(--secondary);
+            margin-top: 5px;
+        }
+        
+        .btn-dashboard {
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-dashboard:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <h1>📊 Dashboard</h1>
+            <p>HE - Online: Gerenciamento de Históricos Escolares</p>
+        </div>
+        
+        <!-- Loading -->
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Carregando dados...</p>
+        </div>
+        
+        <!-- Stats -->
+        <div id="stats-container" style="display: none;">
+            <div class="row">
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card primary">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-number" id="total-students">0</div>
+                        <div class="stat-title">Total de Alunos</div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card success">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-number" id="total-histories">0</div>
+                        <div class="stat-title">Históricos</div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card info">
+                        <div class="stat-icon">📜</div>
+                        <div class="stat-number" id="total-certificates">0</div>
+                        <div class="stat-title">Certificados</div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card danger">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-number" id="total-grades">0</div>
+                        <div class="stat-title">Notas</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Students -->
+            <div class="row mt-4">
+                <div class="col-lg-6">
+                    <div class="recent-section">
+                        <h3>👥 Últimos Alunos Cadastrados</h3>
+                        <div id="recent-students">
+                            <p class="text-muted">Nenhum aluno cadastrado</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Histories -->
+                <div class="col-lg-6">
+                    <div class="recent-section">
+                        <h3>📋 Últimos Históricos Cadastrados</h3>
+                        <div id="recent-histories">
+                            <p class="text-muted">Nenhum histórico cadastrado</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="row mt-4 mb-4">
+                <div class="col-12">
+                    <button class="btn btn-primary btn-dashboard" onclick="openStudentsForm()">
+                        <i class="bi bi-plus-circle"></i> Novo Aluno
+                    </button>
+                    <button class="btn btn-success btn-dashboard" onclick="openHistoryForm()">
+                        <i class="bi bi-plus-circle"></i> Novo Histórico
+                    </button>
+                    <button class="btn btn-info btn-dashboard" onclick="openCertificateForm()">
+                        <i class="bi bi-plus-circle"></i> Emitir Certificado
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        /**
+         * Carrega dados do dashboard
+         */
+        function loadDashboardData() {
+            const loading = document.getElementById('loading');
+            const statsContainer = document.getElementById('stats-container');
+            
+            loading.style.display = 'block';
+            statsContainer.style.display = 'none';
+            
+            google.script.run.withSuccessHandler(displayStats).getStats();
+        }
+        
+        /**
+         * Exibe estatísticas no dashboard
+         */
+        function displayStats(stats) {
+            const loading = document.getElementById('loading');
+            const statsContainer = document.getElementById('stats-container');
+            
+            // Atualiza números
+            document.getElementById('total-students').textContent = stats.totalStudents || 0;
+            document.getElementById('total-histories').textContent = stats.totalHistories || 0;
+            document.getElementById('total-certificates').textContent = stats.totalCertificates || 0;
+            document.getElementById('total-grades').textContent = stats.totalGrades || 0;
+            
+            // Últimos alunos
+            const recentStudentsDiv = document.getElementById('recent-students');
+            if (stats.recentStudents && stats.recentStudents.length > 0) {
+                recentStudentsDiv.innerHTML = stats.recentStudents.map(student => `
+                    <div class="recent-item">
+                        <div class="recent-item-name">${escapeHtml(student.NOME)}</div>
+                        <div class="recent-item-date">CPF: ${student.CPF || 'N/A'}</div>
+                        <div class="recent-item-date">Cadastro: ${student.DATA_CADASTRO || 'N/A'}</div>
+                    </div>
+                `).join('');
+            } else {
+                recentStudentsDiv.innerHTML = '<p class="text-muted">Nenhum aluno cadastrado</p>';
+            }
+            
+            // Últimos históricos
+            const recentHistoriesDiv = document.getElementById('recent-histories');
+            if (stats.recentHistories && stats.recentHistories.length > 0) {
+                recentHistoriesDiv.innerHTML = stats.recentHistories.map(history => `
+                    <div class="recent-item">
+                        <div class="recent-item-name">${history.ANO_LETIVO} - ${history.SERIE}</div>
+                        <div class="recent-item-date">Aluno ID: ${history.ALUNO_ID}</div>
+                        <div class="recent-item-date">Situação: ${history.SITUACAO}</div>
+                    </div>
+                `).join('');
+            } else {
+                recentHistoriesDiv.innerHTML = '<p class="text-muted">Nenhum histórico cadastrado</p>';
+            }
+            
+            loading.style.display = 'none';
+            statsContainer.style.display = 'block';
+        }
+        
+        /**
+         * Escape HTML
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        /**
+         * Abre formulário de alunos
+         */
+        function openStudentsForm() {
+            google.script.run.openStudents();
+        }
+        
+        /**
+         * Abre formulário de históricos
+         */
+        function openHistoryForm() {
+            google.script.run.openHistories();
+        }
+        
+        /**
+         * Abre formulário de certificados
+         */
+        function openCertificateForm() {
+            google.script.run.openCertificates();
+        }
+        
+        /**
+         * Função que será exposta ao lado do servidor
+         */
+        function getStats() {
+            return StudentsController.getStats();
+        }
+        
+        // Carrega dados ao inicializar
+        loadDashboardData();
+    </script>
+</body>
+</html>

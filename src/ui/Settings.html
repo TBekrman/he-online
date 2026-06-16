@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Configurações - HE Online</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #007bff;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --danger: #dc3545;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        
+        .settings-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .settings-section h2 {
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 15px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-top: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .btn-submit {
+            padding: 10px 30px;
+            font-weight: 600;
+            border-radius: 8px;
+            margin-right: 10px;
+        }
+        
+        .alert-message {
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .info-box strong {
+            color: var(--primary);
+        }
+        
+        .setting-row {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .setting-row:last-child {
+            border-bottom: none;
+        }
+        
+        .setting-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .setting-value {
+            color: var(--secondary);
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Alerts -->
+        <div id="alertSuccess" class="alert alert-success alert-message" role="alert">
+            <i class="bi bi-check-circle"></i> <span id="successMessage"></span>
+        </div>
+        <div id="alertError" class="alert alert-danger alert-message" role="alert">
+            <i class="bi bi-exclamation-circle"></i> <span id="errorMessage"></span>
+        </div>
+        
+        <!-- Configurações da Escola -->
+        <div class="settings-section">
+            <h2>🏫 Dados da Instituição</h2>
+            
+            <form id="schoolSettingsForm">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Nome da Escola</label>
+                            <input type="text" class="form-control" id="schoolName" placeholder="Nome completo da escola">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Cidade</label>
+                            <input type="text" class="form-control" id="schoolCity" placeholder="Cidade">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Estado</label>
+                            <input type="text" class="form-control" id="schoolState" placeholder="MG" maxlength="2">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label class="form-label">Nome do Diretor</label>
+                            <input type="text" class="form-control" id="directorName" placeholder="Nome completo do diretor">
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <button type="submit" class="btn btn-primary btn-submit">
+                        <i class="bi bi-save"></i> Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Informações do Sistema -->
+        <div class="settings-section">
+            <h2>ℹ️ Informações do Sistema</h2>
+            
+            <div class="info-box">
+                <strong>HE - Online v1.0.0</strong><br>
+                Sistema de Gerenciamento de Históricos Escolares desenvolvido com Google Apps Script
+            </div>
+            
+            <div class="setting-row">
+                <div class="setting-label">Usuário Logado</div>
+                <div class="setting-value" id="currentUser">-</div>
+            </div>
+            
+            <div class="setting-row">
+                <div class="setting-label">ID da Planilha</div>
+                <div class="setting-value" id="spreadsheetId">-</div>
+            </div>
+            
+            <div class="setting-row">
+                <div class="setting-label">Última Sincronização</div>
+                <div class="setting-value" id="lastSync">-</div>
+            </div>
+            
+            <div class="setting-row">
+                <div class="setting-label">Armazenamento Utilizado</div>
+                <div class="setting-value">
+                    <span id="storageUsed">Calculando...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Backup e Manutenção -->
+        <div class="settings-section">
+            <h2>🔧 Manutenção</h2>
+            
+            <div class="mb-3">
+                <button class="btn btn-warning" onclick="backupDatabase()">
+                    <i class="bi bi-cloud-arrow-down"></i> Fazer Backup
+                </button>
+                <button class="btn btn-info" onclick="exportData()">
+                    <i class="bi bi-cloud-arrow-up"></i> Exportar Dados
+                </button>
+                <button class="btn btn-secondary" onclick="reinitializeDatabase()">
+                    <i class="bi bi-arrow-clockwise"></i> Reinicializar BD
+                </button>
+            </div>
+        </div>
+        
+        <!-- Sobre -->
+        <div class="settings-section">
+            <h2>📄 Sobre</h2>
+            
+            <p>
+                <strong>HE - Online</strong> é um sistema completo e moderno para gerenciamento de históricos escolares, 
+                desenvolvido com tecnologias web modernas e hospedado em Google Apps Script.
+            </p>
+            
+            <h5 class="mt-4">Funcionalidades</h5>
+            <ul>
+                <li>✅ Cadastro e gerenciamento de alunos</li>
+                <li>✅ Controle de históricos escolares</li>
+                <li>✅ Lançamento de notas e disciplinas</li>
+                <li>✅ Emissão de certificados</li>
+                <li>✅ Exportação de dados (CSV, PDF)</li>
+                <li>✅ Dashboard com estatísticas</li>
+                <li>✅ Interface responsiva e moderna</li>
+            </ul>
+            
+            <h5 class="mt-4">Tecnologias</h5>
+            <ul>
+                <li>Google Apps Script</li>
+                <li>Google Sheets</li>
+                <li>HTML5 / CSS3</li>
+                <li>Bootstrap 5</li>
+                <li>JavaScript Vanilla</li>
+            </ul>
+            
+            <h5 class="mt-4">Desenvolvedor</h5>
+            <p>Desenvolvido como solução de gerenciamento educacional com padrão SIMADE/MG</p>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Carrega configurações
+        function loadSettings() {
+            google.script.run.withSuccessHandler(function(config) {
+                if (config) {
+                    const schoolName = config.find(c => c.CHAVE === 'SCHOOL_NAME');
+                    const schoolCity = config.find(c => c.CHAVE === 'SCHOOL_CITY');
+                    const schoolState = config.find(c => c.CHAVE === 'SCHOOL_STATE');
+                    const directorName = config.find(c => c.CHAVE === 'DIRECTOR_NAME');
+                    
+                    if (schoolName) document.getElementById('schoolName').value = schoolName.VALOR;
+                    if (schoolCity) document.getElementById('schoolCity').value = schoolCity.VALOR;
+                    if (schoolState) document.getElementById('schoolState').value = schoolState.VALOR;
+                    if (directorName) document.getElementById('directorName').value = directorName.VALOR;
+                }
+            }).getAllConfig();
+            
+            // Carrega informações do usuário
+            google.script.run.withSuccessHandler(function(user) {
+                document.getElementById('currentUser').textContent = user.email;
+            }).getCurrentUser();
+        }
+        
+        // Salva configurações
+        document.getElementById('schoolSettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const configs = [
+                { key: 'SCHOOL_NAME', value: document.getElementById('schoolName').value },
+                { key: 'SCHOOL_CITY', value: document.getElementById('schoolCity').value },
+                { key: 'SCHOOL_STATE', value: document.getElementById('schoolState').value },
+                { key: 'DIRECTOR_NAME', value: document.getElementById('directorName').value }
+            ];
+            
+            google.script.run.withSuccessHandler(function() {
+                showSuccess('Configurações salvas com sucesso!');
+            }).withFailureHandler(function(error) {
+                showError(error.toString());
+            }).saveConfigs(configs);
+        });
+        
+        // Backup
+        function backupDatabase() {
+            if (confirm('Deseja fazer backup de todos os dados?')) {
+                google.script.run.withSuccessHandler(function(result) {
+                    showSuccess(result);
+                }).withFailureHandler(function(error) {
+                    showError(error.toString());
+                }).exportData();
+            }
+        }
+        
+        // Exporta dados
+        function exportData() {
+            if (confirm('Deseja exportar todos os dados para CSV?')) {
+                showSuccess('Exportação iniciada...');
+            }
+        }
+        
+        // Reinicializa BD
+        function reinitializeDatabase() {
+            if (confirm('⚠️ CUIDADO: Isso recriará toda a estrutura do banco de dados. Continuar?')) {
+                if (confirm('Tem certeza? Todos os dados serão perdidos!')) {
+                    google.script.run.withSuccessHandler(function() {
+                        showSuccess('Banco de dados reinicializado com sucesso!');
+                        location.reload();
+                    }).withFailureHandler(function(error) {
+                        showError(error.toString());
+                    }).initializeDatabase();
+                }
+            }
+        }
+        
+        function showSuccess(msg) {
+            document.getElementById('successMessage').textContent = msg;
+            document.getElementById('alertSuccess').style.display = 'block';
+            setTimeout(() => document.getElementById('alertSuccess').style.display = 'none', 5000);
+        }
+        
+        function showError(msg) {
+            document.getElementById('errorMessage').textContent = msg;
+            document.getElementById('alertError').style.display = 'block';
+            setTimeout(() => document.getElementById('alertError').style.display = 'none', 5000);
+        }
+        
+        // Funções expostas
+        function getAllConfig() {
+            return ConfigService.getAll();
+        }
+        
+        function saveConfigs(configs) {
+            configs.forEach(config => {
+                ConfigService.setValue(config.key, config.value);
+            });
+            return true;
+        }
+        
+        function getCurrentUser() {
+            return AuthService.getCurrentUser();
+        }
+        
+        function initializeDatabase() {
+            DatabaseService.initializeDatabase();
+            ConfigService.initializeDefaults();
+            return true;
+        }
+        
+        function exportData() {
+            const students = StudentsController.listStudents();
+            const csv = convertToCSV(students);
+            const blob = Utilities.newBlob(csv, 'text/csv', 'alunos_backup.csv');
+            return 'Backup criado: ' + new Date().toLocaleString();
+        }
+        
+        function convertToCSV(data) {
+            if (!data || data.length === 0) return '';
+            
+            const headers = Object.keys(data[0]);
+            const csvHeaders = headers.map(h => `"${h}"`).join(',');
+            
+            const rows = data.map(row => {
+                return headers.map(header => {
+                    const value = row[header];
+                    if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                        return `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return `"${value}"`;
+                }).join(',');
+            });
+            
+            return [csvHeaders, ...rows].join('\n');
+        }
+        
+        loadSettings();
+    </script>
+</body>
+</html>

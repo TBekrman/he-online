@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HE - Online</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <?!= include('frontend/css'); ?>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">HE</div>
+        <div>
+          <strong>HE - Online</strong>
+          <small>Historico Escolar</small>
+        </div>
+      </div>
+      <nav class="nav flex-column">
+        <button class="nav-link active" data-view="dashboard"><i class="bi bi-speedometer2"></i><span>Dashboard</span></button>
+        <button class="nav-link" data-view="alunos"><i class="bi bi-people"></i><span>Alunos</span></button>
+        <button class="nav-link" data-view="historico"><i class="bi bi-journal-text"></i><span>Historicos</span></button>
+        <button class="nav-link" data-view="certificados"><i class="bi bi-award"></i><span>Certificados</span></button>
+        <button class="nav-link" data-view="configuracoes"><i class="bi bi-gear"></i><span>Configuracoes</span></button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="page-title">Dashboard</h1>
+          <p id="page-subtitle">Visao geral do modulo de historico escolar</p>
+        </div>
+        <div class="user-box">
+          <i class="bi bi-person-circle"></i>
+          <span id="current-user">Usuario</span>
+        </div>
+      </header>
+
+      <section id="view-dashboard" class="view active"><?!= include('frontend/dashboard'); ?></section>
+      <section id="view-alunos" class="view"><?!= include('frontend/alunos'); ?></section>
+      <section id="view-alunoDetalhe" class="view"><?!= include('frontend/alunoDetalhe'); ?></section>
+      <section id="view-historico" class="view"><?!= include('frontend/historico'); ?></section>
+      <section id="view-certificados" class="view"><?!= include('frontend/certificados'); ?></section>
+      <section id="view-configuracoes" class="view"><?!= include('frontend/configuracoes'); ?></section>
+    </main>
+  </div>
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="app-toast" class="toast" role="alert">
+      <div class="toast-header">
+        <strong class="me-auto">HE - Online</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+      </div>
+      <div class="toast-body"></div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="studentModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <form class="modal-content" id="studentForm">
+        <div class="modal-header"><h5 class="modal-title">Aluno</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"><?!= include('frontend/studentForm'); ?></div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <form class="modal-content" id="historyForm">
+        <div class="modal-header"><h5 class="modal-title">Historico Escolar</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"><?!= include('frontend/historyForm'); ?></div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal fade" id="certificateModal" tabindex="-1">
+    <div class="modal-dialog">
+      <form class="modal-content" id="certificateForm">
+        <div class="modal-header"><h5 class="modal-title">Certificado</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"><?!= include('frontend/certificateForm'); ?></div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary"><i class="bi bi-award"></i> Emitir</button></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <?!= include('frontend/js'); ?>
+</body>
+</html>

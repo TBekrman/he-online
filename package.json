@@ -1,0 +1,20 @@
+{
+  "name": "he-online",
+  "version": "1.0.0",
+  "description": "Sistema web para gerenciamento de historicos escolares com Google Apps Script e Google Sheets.",
+  "main": "apps-script/WebApp.gs",
+  "scripts": {
+    "login": "clasp login",
+    "create": "clasp create --type webapp --title \"HE - Online\" --rootDir .",
+    "push": "clasp push",
+    "pull": "clasp pull",
+    "open": "clasp open",
+    "deploy": "clasp deploy --description \"HE - Online\""
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@google/clasp": "^2.4.2"
+  },
+  "author": "",
+  "license": "MIT"
+}

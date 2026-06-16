@@ -1,0 +1,18 @@
+<section class="panel">
+  <div class="detail-head">
+    <button class="btn btn-light" data-view-target="alunos"><i class="bi bi-arrow-left"></i></button>
+    <div><h2 id="detail-name">Aluno</h2><p id="detail-meta"></p></div>
+    <div class="detail-actions">
+      <button class="btn btn-outline-primary" id="detail-edit"><i class="bi bi-pencil"></i> Editar</button>
+      <button class="btn btn-primary" id="detail-new-history"><i class="bi bi-journal-plus"></i> Novo historico</button>
+      <button class="btn btn-success" id="detail-certificate"><i class="bi bi-award"></i> Certificado</button>
+      <button class="btn btn-outline-dark" id="detail-print"><i class="bi bi-printer"></i> Historico</button>
+      <button class="btn btn-outline-dark" id="detail-pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+    </div>
+  </div>
+  <div class="info-grid" id="detail-info"></div>
+</section>
+<div class="content-grid">
+  <section class="panel"><h2>Historicos cadastrados</h2><div class="table-responsive"><table class="table"><thead><tr><th>Tipo</th><th>Serie</th><th>Ano</th><th>Situacao</th><th></th></tr></thead><tbody id="detail-histories"></tbody></table></div></section>
+  <section class="panel"><h2>Certificados emitidos</h2><div class="table-responsive"><table class="table"><thead><tr><th>Etapa</th><th>Conclusao</th><th>Emissao</th><th></th></tr></thead><tbody id="detail-certificates"></tbody></table></div></section>
+</div>
