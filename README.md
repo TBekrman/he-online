@@ -14,6 +14,9 @@ Sistema web para gerenciamento de historicos escolares, agora preparado para Fir
 - Impressao de historico e certificado com opcao de salvar como PDF pelo navegador.
 - Login com Firebase Authentication por email/senha e conta Google.
 - Gerenciamento online de usuarios por administradores.
+- Acesso restrito a e-mails previamente autorizados pelo administrador.
+- Datas exibidas e cadastradas no formato `dd/mm/aaaa`.
+- Carga horaria registrada em horas.
 - Banco de dados no Cloud Firestore.
 
 ## Estrutura Firebase
@@ -113,7 +116,9 @@ O Firebase mostrara a URL publica do site ao final do deploy.
 
 O primeiro usuario que entrar no sistema sera registrado como `admin`. Depois disso, acesse o menu **Usuarios** para autorizar, bloquear ou promover outros usuarios.
 
-Usuarios podem entrar com email/senha ou com e-mail Google. Para usar Google, o provedor precisa estar ativado no Firebase Authentication.
+Para liberar acesso, o administrador deve cadastrar o e-mail do usuario, escolher o perfil `Administrador` ou `Usuario` e manter o status como `Ativo`. E-mails nao cadastrados ou bloqueados nao acessam o sistema.
+
+Usuarios podem entrar com e-mail Google. Para usar Google, o provedor precisa estar ativado no Firebase Authentication.
 
 ## Historico Consolidado
 

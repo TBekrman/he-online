@@ -8,6 +8,7 @@ const MEDIO_SERIES = ['1o Ano','2o Ano','3o Ano'];
 const FUND_DISCIPLINAS = ['Lingua Portuguesa','Matematica','Ciencias','Geografia','Historia','Ensino Religioso','Educacao Fisica','Arte','Ingles'];
 const MEDIO_DISCIPLINAS = ['Lingua Portuguesa','Arte','Educacao Fisica','Matematica','Fisica','Biologia','Quimica','Historia','Geografia','Sociologia','Filosofia'];
 const SITUACOES = ['Aprovado','Reprovado','Cursando','Transferido','Concluido'];
+const DATE_FIELDS = ['dataNascimento', 'dataConclusao'];
 
 const state = { app:null, auth:null, db:null, user:null, currentUserProfile:null, alunos:[], historicos:[], notas:[], certificados:[], usuarios:[], config:{}, selectedAlunoId:null };
 const modal = {};
@@ -57,6 +58,7 @@ function bindUi(){
   document.getElementById('newHistoryDetail').addEventListener('click', () => openHistorico({ alunoId: state.selectedAlunoId }));
   document.getElementById('newCertificateDetail').addEventListener('click', () => openCertificado({ alunoId: state.selectedAlunoId }));
   document.getElementById('printHistoryDetail').addEventListener('click', () => printHistorico(state.selectedAlunoId));
+  document.querySelectorAll('.date-br').forEach((input) => input.addEventListener('input', maskDateInput));
 
   document.body.addEventListener('click', async (event) => {
     const el = event.target.closest('[data-action]');
@@ -151,15 +153,21 @@ async function loadCurrentUserProfile(){
 
 async function ensureCurrentUserProfile(user){
   const users = snapToArray(await getDocs(collection(state.db, 'usuarios')));
-  const existing = users.find((item) => item.id === user.uid || String(item.email || '').toLowerCase() === String(user.email || '').toLowerCase());
+  const userEmail = normalizeEmail(user.email);
+  const existing = users.find((item) => item.id === user.uid || normalizeEmail(item.email) === userEmail);
   const firstUser = users.length === 0;
+  if (!firstUser && !existing) {
+    await signOut(state.auth);
+    toast('E-mail nao autorizado. Solicite acesso ao administrador.');
+    return false;
+  }
   if (existing && existing.status === 'blocked') {
     await signOut(state.auth);
     toast('Usuario bloqueado pelo administrador.');
     return false;
   }
   const profile = {
-    email: user.email || '',
+    email: userEmail,
     nome: user.displayName || user.email || 'Usuario',
     role: firstUser ? 'admin' : (existing && existing.role) || 'user',
     status: (existing && existing.status) || 'active',
@@ -217,7 +225,7 @@ function renderDashboard(){
 function renderAlunos(){
   const term = (document.getElementById('searchAluno').value || '').toLowerCase();
   const list = state.alunos.filter((a) => [a.nome,a.cpf,a.rg,a.mae].join(' ').toLowerCase().includes(term));
-  document.getElementById('alunosTable').innerHTML = rowsOrEmpty(list.map((a) => `<tr><td><strong>${esc(a.nome)}</strong></td><td>${esc(a.dataNascimento)}</td><td>${esc(a.mae)}</td><td>${esc(a.cpf)}</td><td>${esc(a.telefone)}</td><td class="actions"><button class="btn btn-sm btn-light" data-action="detailAluno" data-id="${esc(a.id)}"><i class="bi bi-eye"></i></button><button class="btn btn-sm btn-outline-primary" data-action="editAluno" data-id="${esc(a.id)}"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" data-action="deleteAluno" data-id="${esc(a.id)}"><i class="bi bi-trash"></i></button></td></tr>`));
+  document.getElementById('alunosTable').innerHTML = rowsOrEmpty(list.map((a) => `<tr><td><strong>${esc(a.nome)}</strong></td><td>${esc(dateBr(a.dataNascimento))}</td><td>${esc(a.mae)}</td><td>${esc(a.cpf)}</td><td>${esc(a.telefone)}</td><td class="actions"><button class="btn btn-sm btn-light" data-action="detailAluno" data-id="${esc(a.id)}"><i class="bi bi-eye"></i></button><button class="btn btn-sm btn-outline-primary" data-action="editAluno" data-id="${esc(a.id)}"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" data-action="deleteAluno" data-id="${esc(a.id)}"><i class="bi bi-trash"></i></button></td></tr>`));
 }
 
 function renderHistoricos(){
@@ -232,7 +240,7 @@ function renderHistoricos(){
 }
 
 function renderCertificados(){
-  document.getElementById('certificadosTable').innerHTML = rowsOrEmpty(state.certificados.map((c) => `<tr><td>${esc(c.alunoNome)}</td><td>${esc(c.etapa)}</td><td>${esc(c.dataConclusao)}</td><td>${esc(dateBr(c.dataEmissao))}</td><td class="actions"><button class="btn btn-sm btn-outline-dark" data-action="printCertificado" data-id="${esc(c.id)}"><i class="bi bi-printer"></i></button><button class="btn btn-sm btn-outline-danger" data-action="deleteCertificado" data-id="${esc(c.id)}"><i class="bi bi-trash"></i></button></td></tr>`));
+  document.getElementById('certificadosTable').innerHTML = rowsOrEmpty(state.certificados.map((c) => `<tr><td>${esc(c.alunoNome)}</td><td>${esc(c.etapa)}</td><td>${esc(dateBr(c.dataConclusao))}</td><td>${esc(dateBr(c.dataEmissao))}</td><td class="actions"><button class="btn btn-sm btn-outline-dark" data-action="printCertificado" data-id="${esc(c.id)}"><i class="bi bi-printer"></i></button><button class="btn btn-sm btn-outline-danger" data-action="deleteCertificado" data-id="${esc(c.id)}"><i class="bi bi-trash"></i></button></td></tr>`));
 }
 
 function renderUsuarios(){
@@ -273,7 +281,7 @@ function openAluno(data = {}){
 
 async function saveAluno(event){
   event.preventDefault();
-  const data = normalizeAluno(formData(event.currentTarget));
+  const data = normalizeDateFields(normalizeAluno(formData(event.currentTarget)));
   if (data.id) {
     await updateDoc(doc(state.db, 'alunos', data.id), omitId(data));
   } else {
@@ -310,10 +318,10 @@ async function openDetalhe(id){
   const historicos = state.historicos.filter((h) => h.alunoId === id);
   const certificados = state.certificados.filter((c) => c.alunoId === id);
   document.getElementById('detailName').textContent = aluno.nome;
-  document.getElementById('detailMeta').textContent = `${aluno.dataNascimento || ''} | ${aluno.naturalidade || ''}/${aluno.uf || ''}`;
+  document.getElementById('detailMeta').textContent = `${dateBr(aluno.dataNascimento) || ''} | ${aluno.naturalidade || ''}/${aluno.uf || ''}`;
   document.getElementById('detailInfo').innerHTML = ['mae','pai','rg','cpf','endereco','telefone','email','observacoes'].map((key) => `<div class="info-item"><span>${label(key)}</span><strong>${esc(aluno[key])}</strong></div>`).join('');
   document.getElementById('detailHistoricos').innerHTML = rowsOrEmpty(historicos.map((h) => `<tr><td>${esc(h.tipo)}</td><td>${esc(h.serie)}</td><td>${esc(h.anoLetivo)}</td><td>${esc(h.situacao)}</td><td class="actions"><button class="btn btn-sm btn-outline-primary" data-action="editHistorico" data-id="${esc(h.id)}"><i class="bi bi-pencil"></i></button></td></tr>`));
-  document.getElementById('detailCertificados').innerHTML = rowsOrEmpty(certificados.map((c) => `<tr><td>${esc(c.etapa)}</td><td>${esc(c.dataConclusao)}</td><td>${esc(dateBr(c.dataEmissao))}</td><td class="actions"><button class="btn btn-sm btn-outline-dark" data-action="printCertificado" data-id="${esc(c.id)}"><i class="bi bi-printer"></i></button></td></tr>`));
+  document.getElementById('detailCertificados').innerHTML = rowsOrEmpty(certificados.map((c) => `<tr><td>${esc(c.etapa)}</td><td>${esc(dateBr(c.dataConclusao))}</td><td>${esc(dateBr(c.dataEmissao))}</td><td class="actions"><button class="btn btn-sm btn-outline-dark" data-action="printCertificado" data-id="${esc(c.id)}"><i class="bi bi-printer"></i></button></td></tr>`));
   showView('detalhe');
 }
 
@@ -391,7 +399,7 @@ function openCertificado(data = {}){
 
 async function saveCertificado(event){
   event.preventDefault();
-  const data = formData(event.currentTarget);
+  const data = normalizeDateFields(formData(event.currentTarget));
   await addDoc(collection(state.db, 'certificados'), { ...data, dataEmissao:new Date().toISOString(), createdAt:serverTimestamp() });
   modal.certificado.hide();
   await refreshAll();
@@ -416,9 +424,9 @@ async function saveUsuario(event){
   event.preventDefault();
   if (!isAdmin()) return toast('Apenas administradores podem gerenciar usuarios.');
   const data = formData(event.currentTarget);
-  const id = data.id || emailId(data.email);
+  const id = data.id || normalizeEmail(data.email);
   const payload = {
-    email: String(data.email || '').trim().toLowerCase(),
+    email: normalizeEmail(data.email),
     nome: data.nome || '',
     role: data.role || 'user',
     status: data.status || 'active',
@@ -462,7 +470,7 @@ function printHistorico(alunoId){
 function printCertificado(id){
   const certificado = state.certificados.find((item) => item.id === id);
   const aluno = state.alunos.find((item) => item.id === certificado.alunoId);
-  const body = `<h1>${esc(state.config.nomeEscola || 'HE - Online')}</h1><div class="certificate"><h2>Certificado de Conclusao</h2><p>Certificamos que <strong>${esc(aluno.nome)}</strong>, filho(a) de ${esc(aluno.mae)}, concluiu a etapa <strong>${esc(certificado.etapa)}</strong> em ${esc(certificado.dataConclusao)}.</p><p>Emitido em ${esc(dateBr(certificado.dataEmissao))}.</p></div>${signatures()}`;
+  const body = `<h1>${esc(state.config.nomeEscola || 'HE - Online')}</h1><div class="certificate"><h2>Certificado de Conclusao</h2><p>Certificamos que <strong>${esc(aluno.nome)}</strong>, filho(a) de ${esc(aluno.mae)}, concluiu a etapa <strong>${esc(certificado.etapa)}</strong> em ${esc(dateBr(certificado.dataConclusao))}.</p><p>Emitido em ${esc(dateBr(certificado.dataEmissao))}.</p></div>${signatures()}`;
   openPrint(printShell('Certificado', body));
 }
 
@@ -492,14 +500,14 @@ function renderHistoricoModelo(aluno, historicos){
       <h2>Identificacao do aluno</h2>
       <table class="meta-table">
         <tr><th>Nome</th><td colspan="3">${esc(aluno.nome)}</td></tr>
-        <tr><th>Data de nascimento</th><td>${esc(aluno.dataNascimento)}</td><th>Naturalidade/UF</th><td>${esc(aluno.naturalidade)} / ${esc(aluno.uf)}</td></tr>
+        <tr><th>Data de nascimento</th><td>${esc(dateBr(aluno.dataNascimento))}</td><th>Naturalidade/UF</th><td>${esc(aluno.naturalidade)} / ${esc(aluno.uf)}</td></tr>
         <tr><th>Nacionalidade</th><td>${esc(aluno.nacionalidade)}</td><th>Sexo</th><td>${esc(aluno.sexo)}</td></tr>
         <tr><th>Mae</th><td>${esc(aluno.mae)}</td><th>Pai</th><td>${esc(aluno.pai)}</td></tr>
         <tr><th>RG/Orgao/UF</th><td>${esc(aluno.rg)} ${esc(aluno.orgaoExpedidor)} ${esc(aluno.ufRg)}</td><th>CPF</th><td>${esc(aluno.cpf)}</td></tr>
       </table>
       <h2>Estudos realizados</h2>
       <table class="history-table">
-        <thead><tr><th>Ano</th><th>Etapa</th><th>Serie/Fase</th><th>Escola</th><th>Municipio</th><th>UF</th><th>Dias</th><th>CH</th><th>Faltas</th><th>Resultado</th></tr></thead>
+        <thead><tr><th>Ano</th><th>Etapa</th><th>Serie/Fase</th><th>Escola</th><th>Municipio</th><th>UF</th><th>Dias</th><th>CH (h)</th><th>Faltas</th><th>Resultado</th></tr></thead>
         <tbody>${percurso}</tbody>
       </table>
       <h2>Aproveitamento escolar</h2>
@@ -543,7 +551,7 @@ function fillForm(form, data = {}){
   form.reset();
   [...form.elements].forEach((field) => {
     if (!field.name) return;
-    field.value = data[field.name] ?? '';
+    field.value = DATE_FIELDS.includes(field.name) ? dateBr(data[field.name]) : data[field.name] ?? '';
   });
 }
 
@@ -553,8 +561,27 @@ function omitId(data){
   return copy;
 }
 
+function normalizeDateFields(data){
+  const copy = { ...data };
+  DATE_FIELDS.forEach((field) => {
+    if (copy[field]) copy[field] = dateBr(copy[field]);
+  });
+  return copy;
+}
+
+function maskDateInput(event){
+  const digits = event.target.value.replace(/\D/g, '').slice(0, 8);
+  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
+  event.target.value = parts.join('/');
+}
+
 function dateBr(value){
   if (!value) return '';
+  const text = String(value);
+  const br = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (br) return text;
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
   const date = new Date(value);
   return isNaN(date.getTime()) ? value : date.toLocaleDateString('pt-BR');
 }
@@ -569,6 +596,10 @@ function isAdmin(){
 
 function emailId(email){
   return String(email || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || crypto.randomUUID();
+}
+
+function normalizeEmail(email){
+  return String(email || '').trim().toLowerCase();
 }
 
 function unique(values){

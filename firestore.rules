@@ -14,6 +14,16 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) && profile().data.status == 'active';
     }
 
+    function authorizedEmail() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.token.email))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.token.email)).data.status == 'active';
+    }
+
+    function emailProfile() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.token.email));
+    }
+
     function admin() {
       return activeUser() && profile().data.role == 'admin';
     }
@@ -40,8 +50,19 @@ service cloud.firestore {
 
     match /usuarios/{docId} {
       allow read: if signedIn();
-      allow create: if signedIn() && (docId == request.auth.uid || admin());
-      allow update, delete: if admin() || (signedIn() && docId == request.auth.uid);
+      allow create: if admin()
+        || (signedIn()
+          && docId == request.auth.uid
+          && authorizedEmail()
+          && request.resource.data.role == emailProfile().data.role
+          && request.resource.data.status == 'active');
+      allow update: if admin()
+        || (signedIn()
+          && docId == request.auth.uid
+          && activeUser()
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.status == resource.data.status);
+      allow delete: if admin();
     }
   }
 }
