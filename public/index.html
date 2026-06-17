@@ -38,7 +38,7 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">HE</div>
-        <div><strong>HE - Online</strong><small>Firebase</small></div>
+        <div><strong>HE - Online</strong><small id="appVersionLabel">Firebase</small></div>
       </div>
       <nav class="nav flex-column">
         <button class="nav-link active" data-view="dashboard"><i class="bi bi-speedometer2"></i><span>Dashboard</span></button>
@@ -48,12 +48,17 @@
         <button class="nav-link admin-only d-none" data-view="usuarios"><i class="bi bi-person-gear"></i><span>Usuarios</span></button>
         <button class="nav-link" data-view="config"><i class="bi bi-gear"></i><span>Configuracoes</span></button>
       </nav>
+      <div class="version-box">
+        <span>Versao do sistema</span>
+        <strong id="appVersionBox">--</strong>
+        <small id="appUpdatedBox">--</small>
+      </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle">Visao geral do historico escolar</p></div>
-        <div class="user-box"><i class="bi bi-person-circle"></i><span id="userEmail"></span><button class="btn btn-sm btn-light" id="logout">Sair</button></div>
+        <div class="user-box"><i class="bi bi-person-circle"></i><span id="userEmail"></span><span class="version-pill" id="appVersionTop">--</span><button class="btn btn-sm btn-light" id="logout">Sair</button></div>
       </header>
 
       <section id="view-dashboard" class="view active">

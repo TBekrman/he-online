@@ -118,7 +118,7 @@ O primeiro usuario que entrar no sistema sera registrado como `admin`. Depois di
 
 Para liberar acesso, o administrador deve cadastrar o e-mail do usuario, escolher o perfil `Administrador` ou `Usuario` e manter o status como `Ativo`. E-mails nao cadastrados ou bloqueados nao acessam o sistema.
 
-Usuarios podem entrar com e-mail Google. Para usar Google, o provedor precisa estar ativado no Firebase Authentication.
+Usuarios podem entrar com e-mail Google. Quando o e-mail ja estiver cadastrado como `Ativo`, o login Google sera liberado automaticamente. Para usar Google, o provedor precisa estar ativado no Firebase Authentication e o dominio do Hosting precisa estar em **Authentication > Settings > Authorized domains**.
 
 ## Historico Consolidado
 

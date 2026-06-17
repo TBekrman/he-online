@@ -3,12 +3,23 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopu
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 const STORAGE_KEY = 'heOnlineFirebaseConfig';
-const FUND_SERIES = ['Fase Introdutoria','Fase I','Fase II','Fase III','Fase IV','6o Ano','7o Ano','8o Ano','9o Ano'];
+const APP_VERSION = '1.5.0';
+const APP_UPDATED_AT = '17/06/2026 12:07';
+const FUND_SERIES = ['Fase Introdutoria','Fase I','Fase II','Fase III','Fase IV','1o Ano','2o Ano','3o Ano','4o Ano','5o Ano','6o Ano','7o Ano','8o Ano','9o Ano'];
 const MEDIO_SERIES = ['1o Ano','2o Ano','3o Ano'];
 const FUND_DISCIPLINAS = ['Lingua Portuguesa','Matematica','Ciencias','Geografia','Historia','Ensino Religioso','Educacao Fisica','Arte','Ingles'];
 const MEDIO_DISCIPLINAS = ['Lingua Portuguesa','Arte','Educacao Fisica','Matematica','Fisica','Biologia','Quimica','Historia','Geografia','Sociologia','Filosofia'];
 const SITUACOES = ['Aprovado','Reprovado','Cursando','Transferido','Concluido'];
 const DATE_FIELDS = ['dataNascimento', 'dataConclusao'];
+const BOOTSTRAP_ADMIN_EMAILS = ['thiago.bekrman@educacao.mg.gov.br', 'thiago@educacaoensa.com'];
+const SCHOOL = Object.freeze({
+  name: 'E.E. NOSSA SENHORA AUXILIADORA',
+  orientation: 'ORIENTACAO ASIE/VIDA ESCOLAR No5/2022',
+  address: 'Rod. dos Inconfidentes Km 45,0 - Cachoeira do Campo, Ouro Preto - MG',
+  footer: 'Decreto 6689 de 20 de setembro de 1962',
+  footerAddress: 'Rodovia dos Inconfidentes, Km 45 - S/No - Cachoeira do Campo',
+  footerCity: 'Ouro Preto - MG - CEP: 35.409-592 - Tel.: (31) 3553-1652'
+});
 
 const state = { app:null, auth:null, db:null, user:null, currentUserProfile:null, alunos:[], historicos:[], notas:[], certificados:[], usuarios:[], config:{}, selectedAlunoId:null };
 const modal = {};
@@ -21,9 +32,19 @@ function start(){
   modal.certificado = new bootstrap.Modal(document.getElementById('certificadoModal'));
   bindSetup();
   bindUi();
+  renderVersion();
   const config = window.HE_ONLINE_FIREBASE_CONFIG || readConfig();
   if (!config) return showOnly('setupScreen');
   bootFirebase(config);
+}
+
+function renderVersion(){
+  const label = `v${APP_VERSION}`;
+  const updated = `Atualizado em ${APP_UPDATED_AT}`;
+  document.getElementById('appVersionLabel').textContent = label;
+  document.getElementById('appVersionBox').textContent = label;
+  document.getElementById('appUpdatedBox').textContent = updated;
+  document.getElementById('appVersionTop').textContent = `${label} - ${APP_UPDATED_AT}`;
 }
 
 function bindSetup(){
@@ -139,7 +160,7 @@ async function refreshAll(){
   state.notas = notas;
   state.certificados = certificados.map((c) => ({ ...c, alunoNome: alunoNome(c.alunoId) }));
   state.usuarios = usuarios;
-  state.currentUserProfile = state.usuarios.find((u) => u.id === state.user.uid) || state.currentUserProfile;
+  state.currentUserProfile = state.usuarios.find((u) => u.id === state.user.uid) || state.usuarios.find((u) => normalizeEmail(u.email) === normalizeEmail(state.user.email)) || state.currentUserProfile;
   renderAll();
 }
 
@@ -148,6 +169,11 @@ async function loadCurrentUserProfile(){
   const snap = await getDoc(doc(state.db, 'usuarios', state.user.uid));
   if (snap.exists()) {
     state.currentUserProfile = { id: snap.id, ...snap.data() };
+    return;
+  }
+  const emailSnap = await getDoc(doc(state.db, 'usuarios', normalizeEmail(state.user.email)));
+  if (emailSnap.exists()) {
+    state.currentUserProfile = { id: emailSnap.id, ...emailSnap.data() };
   }
 }
 
@@ -156,7 +182,8 @@ async function ensureCurrentUserProfile(user){
   const userEmail = normalizeEmail(user.email);
   const existing = users.find((item) => item.id === user.uid || normalizeEmail(item.email) === userEmail);
   const firstUser = users.length === 0;
-  if (!firstUser && !existing) {
+  const bootstrapAdmin = BOOTSTRAP_ADMIN_EMAILS.includes(userEmail);
+  if (!firstUser && !existing && !bootstrapAdmin) {
     await signOut(state.auth);
     toast('E-mail nao autorizado. Solicite acesso ao administrador.');
     return false;
@@ -169,7 +196,7 @@ async function ensureCurrentUserProfile(user){
   const profile = {
     email: userEmail,
     nome: user.displayName || user.email || 'Usuario',
-    role: firstUser ? 'admin' : (existing && existing.role) || 'user',
+    role: firstUser || bootstrapAdmin ? 'admin' : (existing && existing.role) || 'user',
     status: (existing && existing.status) || 'active',
     uid: user.uid,
     updatedAt: serverTimestamp()
@@ -423,19 +450,29 @@ function openUsuario(data = {}){
 async function saveUsuario(event){
   event.preventDefault();
   if (!isAdmin()) return toast('Apenas administradores podem gerenciar usuarios.');
-  const data = formData(event.currentTarget);
-  const id = data.id || normalizeEmail(data.email);
-  const payload = {
-    email: normalizeEmail(data.email),
-    nome: data.nome || '',
-    role: data.role || 'user',
-    status: data.status || 'active',
-    updatedAt: serverTimestamp()
-  };
-  await setDoc(doc(state.db, 'usuarios', id), payload, { merge:true });
-  event.currentTarget.reset();
-  await refreshAll();
-  toast('Usuario salvo.');
+  try {
+    const data = formData(event.currentTarget);
+    const email = normalizeEmail(data.email);
+    const id = data.id || email;
+    const payload = {
+      email,
+      nome: data.nome || '',
+      role: data.role || 'user',
+      status: data.status || 'active',
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(doc(state.db, 'usuarios', id), payload, { merge:true });
+    const existingIndex = state.usuarios.findIndex((item) => item.id === id || normalizeEmail(item.email) === email);
+    const localRow = { id, ...payload, updatedAt: new Date().toISOString() };
+    if (existingIndex >= 0) state.usuarios.splice(existingIndex, 1, localRow);
+    else state.usuarios.push(localRow);
+    event.currentTarget.reset();
+    renderUsuarios();
+    renderAdminState();
+    toast('Usuario salvo.');
+  } catch (error) {
+    showError(error);
+  }
 }
 
 async function deleteUsuario(id){
@@ -475,53 +512,130 @@ function printCertificado(id){
 }
 
 function renderHistoricoModelo(aluno, historicos){
-  const first = historicos[0] || {};
-  const disciplinas = unique(state.notas.filter((nota) => historicos.some((h) => h.id === nota.historicoId)).map((nota) => nota.disciplina));
-  const headerCols = historicos.map((h) => `<th>${esc(h.serie)}<br><small>${esc(h.anoLetivo)}</small></th>`).join('');
-  const notaRows = disciplinas.map((disciplina) => {
-    const cols = historicos.map((h) => {
-      const nota = state.notas.find((n) => n.historicoId === h.id && n.disciplina === disciplina) || {};
-      return `<td>${esc(nota.nota)}<br><small>${esc(nota.cargaHoraria)} h</small></td>`;
-    }).join('');
-    return `<tr><th>${esc(disciplina)}</th>${cols}</tr>`;
-  }).join('');
-  const percurso = historicos.map((h) => `<tr><td>${esc(h.anoLetivo)}</td><td>${esc(h.tipo)}</td><td>${esc(h.serie)}</td><td>${esc(h.escola)}</td><td>${esc(h.municipio)}</td><td>${esc(h.uf)}</td><td>${esc(h.diasLetivos)}</td><td>${esc(h.chAnual)}</td><td>${esc(h.faltas)}</td><td>${esc(h.situacao || h.resultadoFinal)}</td></tr>`).join('');
-  return `
-    <div class="sidade-page">
-      <div class="print-head">
-        <div><strong>Historico Escolar</strong><span>HE - Online</span></div>
-        <div class="print-title">${esc(state.config.nomeEscola || first.escola || 'Escola')}</div>
-      </div>
-      <table class="meta-table">
-        <tr><th>Escola</th><td>${esc(first.escola || state.config.nomeEscola)}</td><th>Codigo INEP</th><td>${esc(first.codigoInep)}</td></tr>
-        <tr><th>Municipio/UF</th><td>${esc(first.municipio || state.config.municipio)} / ${esc(first.uf || state.config.uf)}</td><th>Entidade mantenedora</th><td>${esc(first.entidadeMantenedora)}</td></tr>
-        <tr><th>Ato de autorizacao</th><td>${esc(first.atoAutorizacao)}</td><th>Ato de criacao</th><td>${esc(first.atoCriacao)}</td></tr>
-      </table>
-      <h2>Identificacao do aluno</h2>
-      <table class="meta-table">
-        <tr><th>Nome</th><td colspan="3">${esc(aluno.nome)}</td></tr>
-        <tr><th>Data de nascimento</th><td>${esc(dateBr(aluno.dataNascimento))}</td><th>Naturalidade/UF</th><td>${esc(aluno.naturalidade)} / ${esc(aluno.uf)}</td></tr>
-        <tr><th>Nacionalidade</th><td>${esc(aluno.nacionalidade)}</td><th>Sexo</th><td>${esc(aluno.sexo)}</td></tr>
-        <tr><th>Mae</th><td>${esc(aluno.mae)}</td><th>Pai</th><td>${esc(aluno.pai)}</td></tr>
-        <tr><th>RG/Orgao/UF</th><td>${esc(aluno.rg)} ${esc(aluno.orgaoExpedidor)} ${esc(aluno.ufRg)}</td><th>CPF</th><td>${esc(aluno.cpf)}</td></tr>
-      </table>
-      <h2>Estudos realizados</h2>
-      <table class="history-table">
-        <thead><tr><th>Ano</th><th>Etapa</th><th>Serie/Fase</th><th>Escola</th><th>Municipio</th><th>UF</th><th>Dias</th><th>CH (h)</th><th>Faltas</th><th>Resultado</th></tr></thead>
-        <tbody>${percurso}</tbody>
-      </table>
-      <h2>Aproveitamento escolar</h2>
-      <table class="grade-matrix">
-        <thead><tr><th>Componentes curriculares</th>${headerCols}</tr></thead>
-        <tbody>${notaRows}</tbody>
-      </table>
-      <div class="observations"><strong>Observacoes:</strong> ${esc(historicos.map((h) => h.observacoes).filter(Boolean).join(' | '))}</div>
-      ${signatures()}
-    </div>`;
+  const fundamental = sortHistoricos(historicos.filter((h) => h.tipo === 'Ensino Fundamental'));
+  const medio = sortHistoricos(historicos.filter((h) => h.tipo === 'Ensino Medio'));
+  return [
+    fundamental.length ? renderFundamentalPage(aluno, fundamental) : '',
+    medio.length ? renderMedioPage(aluno, medio) : ''
+  ].filter(Boolean).join('<div class="page-break"></div>');
+}
+
+function renderSchoolHeader(){
+  return `<div class="school-header"><div class="seal">REPUBLICA<br>FEDERATIVA</div><div><h1>${SCHOOL.name}</h1><div class="line"></div><p>${SCHOOL.orientation}</p><div class="line"></div><p>${SCHOOL.address}</p></div><div class="seal">BRASAO<br>MG</div></div>`;
+}
+
+function renderFundamentalPage(aluno, historicos){
+  const bySerie = Object.fromEntries(historicos.map((h) => [fundamentalSerieKey(h.serie), h]));
+  const series = ['1o ano','2o ano','3o ano','4o ano','5o ano','6o ano','7o ano','8o ano','9o ano'];
+  const blocks = series.map((serie) => renderStageBlock(serie, bySerie[fundamentalSerieKey(serie)], DISCIPLINAS_FUNDAMENTAL, 'fundamental')).join('');
+  const emission = historicos.find((h) => h.anoLetivo) || {};
+  return `<section class="print-page">${renderPrintTitle('HISTORICO ESCOLAR - ENSINO FUNDAMENTAL')}${blocks}${signatures()}<div style="text-align:center;margin-top:8px">Ouro Preto, ${esc(emission.dataEmissaoHistorico || dateBr(new Date().toISOString()))}</div></section>`;
+}
+
+function renderMedioPage(aluno, historicos){
+  return renderMedioPdfTemplate(aluno, historicos);
+}
+
+function renderMedioPdfTemplate(aluno, historicos){
+  const bySerie = Object.fromEntries(historicos.map((h) => [normalizeSerie(h.serie), h]));
+  const cert = state.certificados.find((c) => c.alunoId === aluno.id && c.etapa === 'Ensino Medio') || {};
+  const fields = [
+    pdfField(42, 4.45, SCHOOL.name, 'center w30'),
+    pdfField(43, 8.5, SCHOOL.orientation, 'center w32 small'),
+    pdfField(42, 11.8, SCHOOL.address, 'center w34 small'),
+    pdfField(16.8, 17.55, aluno.nome, 'w44'),
+    pdfField(68.8, 17.25, aluno.naturalidade, 'w24'),
+    pdfField(5.5, 19.75, aluno.uf, 'w8'),
+    pdfField(32.5, 19.55, aluno.nacionalidade, 'w26 center'),
+    pdfField(79, 19.55, aluno.sexo, 'w18 center'),
+    pdfField(13.2, 21.95, dateBr(aluno.dataNascimento), 'w24 center'),
+    pdfField(45.2, 21.95, aluno.mae, 'w48'),
+    pdfField(7.2, 24.3, aluno.pai, 'w54'),
+    pdfField(81.2, 24.15, aluno.rg, 'w17 center'),
+    pdfField(22, 26.4, `${aluno.orgaoExpedidor || ''} ${aluno.ufRg || ''}`, 'w22 center'),
+    pdfField(55.5, 26.4, cert.dataConclusao || conclusionYear(historicos), 'w15 center'),
+    pdfField(74.5, 26.4, cert.serieConclusao || '3o Ano', 'w22 center'),
+    pdfField(8, 28.65, cert.etapa || 'Ensino Medio', 'w52 center'),
+    pdfField(28.5, 35.9, cert.municipioData || `Ouro Preto, ${dateBr(new Date().toISOString())}`, 'w42 center')
+  ];
+  ['1o Ano', '2o Ano', '3o Ano'].forEach((serie, index) => {
+    fields.push(...renderMedioSerieFields(bySerie[normalizeSerie(serie)], index));
+  });
+  const obs = historicos.map((h) => h.observacoes).filter(Boolean).join(' | ');
+  fields.push(pdfField(3, 86.9, obs, 'w92 small'));
+  return `<section class="pdf-template-page"><img src="./assets/historico-medio-template.png" alt=""><div class="pdf-fields">${fields.join('')}</div></section>`;
+}
+
+function renderMedioSerieFields(historico, index){
+  const yMeta = [42.8, 69.8, 80.7][index];
+  const yAprov = [62.0, 75.0, 85.6][index];
+  const yCh = [63.55, 76.35, 86.95][index];
+  const yFaltas = [65.05, 77.7, 88.35][index];
+  const yObs = [67.0, 79.05, 89.85][index];
+  const notes = historico ? state.notas.filter((n) => n.historicoId === historico.id) : [];
+  const fields = [
+    pdfField(12, yMeta, historico && historico.escola, 'w34 small'),
+    pdfField(55, yMeta, historico && historico.municipio, 'w18 small center'),
+    pdfField(8, yMeta + 1.7, historico && (historico.uf || historico.estado), 'w8 small center'),
+    pdfField(25, yMeta + 1.7, historico && (historico.minimoPromocao || '60%'), 'w12 small center'),
+    pdfField(58, yMeta + 1.7, historico && historico.diasLetivos, 'w10 small center'),
+    pdfField(76, yMeta + 1.7, historico && historico.chAnual ? `${historico.chAnual}h` : '', 'w10 small center')
+  ];
+  MEDIO_DISCIPLINAS.forEach((disciplina, col) => {
+    const note = notes.find((n) => normalizeSerie(n.disciplina) === normalizeSerie(disciplina)) || {};
+    const x = 14.7 + col * 3.9;
+    fields.push(pdfField(x, yAprov, note.nota || '', 'cell'));
+    fields.push(pdfField(x, yCh, note.cargaHoraria || '', 'cell'));
+  });
+  fields.push(pdfField(89.5, yCh, historico && historico.chAnual ? `${historico.chAnual}` : '', 'cell'));
+  fields.push(pdfField(94, yFaltas, historico && historico.faltas ? `${historico.faltas}` : '', 'cell'));
+  fields.push(pdfField(96.8, yFaltas, historico && (historico.situacao || historico.resultadoFinal), 'vertical-result'));
+  fields.push(pdfField(13, yObs, historico && historico.observacoes, 'w83 small'));
+  return fields;
+}
+
+function pdfField(x, y, value, className = ''){
+  return `<span class="pdf-field ${className}" style="left:${x}%;top:${y}%">${esc(value || '')}</span>`;
+}
+
+function conclusionYear(historicos){
+  const last = sortHistoricos(historicos).slice(-1)[0];
+  return last ? last.anoLetivo : '';
+}
+
+function renderPrintTitle(text){
+  return `<div class="doc-title">${esc(text)}</div>`;
+}
+
+function renderCertificateHeader(aluno, cert){
+  return `<div class="cert-box"><div class="cert-title">Certificado de Conclusao da Educacao Basica</div><table class="cert-grid"><tr><td>Certificamos que <strong>${esc(aluno.nome)}</strong></td><td>natural de ${esc(aluno.naturalidade)}</td></tr><tr><td>UF ${esc(aluno.uf)} de nacionalidade ${esc(aluno.nacionalidade)}</td><td>do sexo ${esc(aluno.sexo)}</td></tr><tr><td>nascido(a) em ${esc(dateBr(aluno.dataNascimento))}</td><td>filho(a) de ${esc(aluno.mae)}</td></tr><tr><td>e de ${esc(aluno.pai)}</td><td>Carteira de Identidade no ${esc(aluno.rg)}</td></tr><tr><td>concluiu em ${esc(cert.dataConclusao || '')}</td><td>a(o) ${esc(cert.etapa || 'Ensino Medio')}</td></tr></table><p style="margin:4px 0 0">Fundamentacao Legal: Lei Federal no 9.394/96; Resolucao SEE/MG no 2.197/12; conforme Historico Escolar e observacoes no anverso e verso.</p>${signatures()}</div>`;
+}
+
+function renderStageBlock(label, historico, disciplinas, model){
+  const notes = historico ? state.notas.filter((n) => n.historicoId === historico.id) : [];
+  const cells = disciplinas.map((disciplina) => {
+    const note = notes.find((n) => normalizeSerie(n.disciplina) === normalizeSerie(disciplina)) || {};
+    return {
+      name: disciplina,
+      nota: note.nota || '',
+      ch: note.cargaHoraria || '',
+      faltas: historico && historico.faltas ? historico.faltas : ''
+    };
+  });
+  const head = cells.map((c) => `<th class="disc-head">${esc(c.name)}</th>`).join('');
+  const notas = cells.map((c) => `<td>${esc(c.nota)}</td>`).join('');
+  const ch = cells.map((c) => `<td>${esc(c.ch)}</td>`).join('');
+  const faltas = cells.map((c) => `<td>${esc(c.faltas)}</td>`).join('');
+  const blankCols = model === 'fundamental' ? '<td class="blank-lines" rowspan="4" colspan="4"></td>' : '<td class="blank-lines" rowspan="4" colspan="3"></td>';
+  return `<div class="stage-block"><table class="stage-meta"><tr><th>ESTABELECIMENTO:</th><td>${esc(historico && historico.escola)}</td><th>MUNICIPIO:</th><td>${esc(historico && historico.municipio)}</td></tr><tr><th>ESTADO:</th><td>${esc(historico && (historico.uf || historico.estado))}</td><th>MINIMO P/ PROMOCAO:</th><td>${esc(historico && (historico.minimoPromocao || '60%'))}</td><th>DIAS LETIVOS ANUAIS:</th><td>${esc(historico && historico.diasLetivos)}</td><th>CARGA HORARIA ANUAL:</th><td>${esc(historico && historico.chAnual)}${historico && historico.chAnual ? 'h' : ''}</td></tr></table><table class="stage-table"><tr><th class="stage-label" rowspan="5">${esc(label)}</th><th class="row-label">VERIFICACAO DO RENDIMENTO</th>${head}<th class="situation" rowspan="5">${esc(historico && (historico.situacao || historico.resultadoFinal))}</th>${blankCols}</tr><tr><th class="row-label">APROVEITAMENTO</th>${notas}</tr><tr><th class="row-label">C.H. CURRICULAR (H.R.)</th>${ch}</tr><tr><th class="row-label">FALTAS (H.R.)</th>${faltas}</tr><tr><th class="row-label">OBSERVACAO</th><td colspan="${disciplinas.length + (model === 'fundamental' ? 4 : 3)}">${esc(historico && historico.observacoes)}</td></tr></table></div>`;
+}
+
+function renderSchoolFooter(){
+  return `<div class="footer-school"><strong>${SCHOOL.name}</strong><br>${SCHOOL.footer}<br>${SCHOOL.footerAddress}<br>${SCHOOL.footerCity}</div>`;
 }
 
 function printShell(title, body, orientation = 'portrait'){
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:A4 ${orientation};margin:10mm}body{font-family:Arial,sans-serif;color:#111;margin:18px;font-size:12px}.print-actions{margin-bottom:12px}.block{border:1px solid #777;padding:10px;margin:10px 0}h1,h2{text-align:center}h2{font-size:14px;text-transform:uppercase;margin:10px 0 6px}.print-head{border:2px solid #111;display:grid;grid-template-columns:180px 1fr;align-items:center;text-align:center;margin-bottom:8px}.print-head div{padding:8px}.print-head span{display:block;font-size:11px}.print-title{font-size:16px;font-weight:700;border-left:2px solid #111}.meta-table,.history-table,.grade-matrix{width:100%;border-collapse:collapse;margin-top:6px}.meta-table th,.meta-table td,.history-table th,.history-table td,.grade-matrix th,.grade-matrix td{border:1px solid #333;padding:4px;vertical-align:middle}.meta-table th{width:16%;background:#f1f5f9;text-align:left}.history-table th,.grade-matrix th{background:#e5e7eb}.grade-matrix td,.grade-matrix th{text-align:center}.grade-matrix th:first-child{text-align:left;min-width:190px}.observations{border:1px solid #333;padding:8px;margin-top:8px}.certificate{font-size:20px;line-height:1.8;text-align:center;margin:80px 30px}.signatures{display:flex;justify-content:space-around;margin-top:54px}.signatures span{border-top:1px solid #111;width:220px;text-align:center;padding-top:8px}@media print{.print-actions{display:none}body{margin:0}}</style></head><body><div class="print-actions"><button onclick="window.print()">Imprimir / salvar PDF</button></div>${body}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:A4 portrait;margin:0}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;font-size:9px;background:#fff}.print-actions{padding:12px}.print-page{width:100%;border:2px solid #222;padding:4px;page-break-inside:avoid}.page-break{page-break-before:always}.pdf-template-page{position:relative;width:210mm;height:297mm;margin:0 auto;background:#fff;overflow:hidden;page-break-inside:avoid}.pdf-template-page img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}.pdf-fields{position:absolute;inset:0}.pdf-field{position:absolute;font-size:9px;line-height:1.05;white-space:nowrap;overflow:hidden;text-align:left}.pdf-field.center{text-align:center}.pdf-field.small{font-size:7.5px}.pdf-field.w8{width:8%}.pdf-field.w10{width:10%}.pdf-field.w12{width:12%}.pdf-field.w15{width:15%}.pdf-field.w17{width:17%}.pdf-field.w18{width:18%}.pdf-field.w22{width:22%}.pdf-field.w24{width:24%}.pdf-field.w26{width:26%}.pdf-field.w30{width:30%}.pdf-field.w32{width:32%}.pdf-field.w34{width:34%}.pdf-field.w42{width:42%}.pdf-field.w44{width:44%}.pdf-field.w48{width:48%}.pdf-field.w52{width:52%}.pdf-field.w54{width:54%}.pdf-field.w83{width:83%}.pdf-field.w92{width:92%}.pdf-field.cell{width:2.8%;text-align:center;font-size:7px}.pdf-field.vertical-result{width:4%;height:6%;writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-size:7px;font-weight:700}.school-header{border:1px solid #222;border-radius:6px;padding:6px 8px;margin-bottom:4px;text-align:center;display:grid;grid-template-columns:90px 1fr 90px;align-items:center}.seal{width:54px;height:54px;border:2px solid #555;border-radius:50%;display:grid;place-items:center;font-size:8px;margin:auto}.school-header h1{font-size:15px;margin:0 0 8px}.school-header .line{border-top:1px solid #777;margin:5px 0}.school-header p{font-size:12px;margin:0}.doc-title{text-align:center;border:1px solid #222;font-size:13px;font-weight:700;text-transform:uppercase;padding:2px;margin:2px 0}.stage-block{border:1px solid #222;margin-top:2px}.stage-meta{width:100%;border-collapse:collapse}.stage-meta td,.stage-meta th{border:1px solid #222;padding:1px 3px}.stage-table{width:100%;border-collapse:collapse;table-layout:fixed}.stage-table th,.stage-table td{border:1px solid #222;text-align:center;vertical-align:middle;padding:1px;height:18px}.stage-label{width:26px;font-weight:700;writing-mode:vertical-rl;transform:rotate(180deg)}.row-label{width:62px;font-weight:700}.disc-head{height:92px;font-size:8px;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap}.situation{width:34px;font-weight:700;writing-mode:vertical-rl;transform:rotate(180deg)}.blank-lines{background:repeating-linear-gradient(to bottom,#fff 0,#fff 8px,#222 9px);position:relative}.blank-lines:after{content:'';position:absolute;inset:0;background:linear-gradient(30deg,transparent 48%,#222 49%,#222 51%,transparent 52%)}.cert-box{border:1px solid #222;border-radius:6px;padding:6px;margin:4px 0}.cert-title{text-align:center;font-size:15px;font-weight:700;text-transform:uppercase;border-bottom:1px solid #222;margin-bottom:5px}.cert-grid{width:100%;border-collapse:collapse}.cert-grid td{padding:3px;border-bottom:1px solid #777}.obs{border:1px solid #222;min-height:24px;padding:3px;margin-top:3px}.footer-school{text-align:center;font-size:11px;margin-top:10px}.signatures{display:flex;justify-content:space-around;margin-top:28px}.signatures span{border-top:1px solid #111;width:240px;text-align:center;padding-top:3px;font-size:10px}@media print{.print-actions{display:none}body{margin:0}.print-page{min-height:276mm}}</style></head><body><div class="print-actions"><button onclick="window.print()">Imprimir / salvar PDF</button></div>${body}</body></html>`;
 }
 
 function signatures(){
@@ -591,7 +705,12 @@ function label(key){
 }
 
 function isAdmin(){
-  return String(state.currentUserProfile && state.currentUserProfile.role || '').toLowerCase() === 'admin' && String(state.currentUserProfile && state.currentUserProfile.status || '').toLowerCase() === 'active';
+  if (BOOTSTRAP_ADMIN_EMAILS.includes(normalizeEmail(state.user && state.user.email))) return true;
+  const profile = state.currentUserProfile || {};
+  const currentEmail = normalizeEmail(state.user && state.user.email);
+  return String(profile.role || '').toLowerCase() === 'admin'
+    && String(profile.status || '').toLowerCase() === 'active'
+    && (!profile.email || normalizeEmail(profile.email) === currentEmail || profile.uid === (state.user && state.user.uid));
 }
 
 function emailId(email){
@@ -608,6 +727,22 @@ function unique(values){
 
 function sortHistoricos(items){
   return [...items].sort((a, b) => String(a.anoLetivo || '').localeCompare(String(b.anoLetivo || '')) || String(a.serie || '').localeCompare(String(b.serie || '')));
+}
+
+function normalizeSerie(value){
+  return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[ºª]/g, 'o').replace(/\s+/g, ' ').trim();
+}
+
+function fundamentalSerieKey(value){
+  const normalized = normalizeSerie(value);
+  const aliases = {
+    'fase introdutoria': '1o ano',
+    'fase i': '2o ano',
+    'fase ii': '3o ano',
+    'fase iii': '4o ano',
+    'fase iv': '5o ano'
+  };
+  return aliases[normalized] || normalized;
 }
 
 function esc(value){

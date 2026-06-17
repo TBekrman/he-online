@@ -6,18 +6,40 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function bootstrapAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.email == 'thiago.bekrman@educacao.mg.gov.br'
+          || request.auth.token.email == 'thiago@educacaoensa.com'
+        );
+    }
+
     function profile() {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
+    function hasUidProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function hasEmailProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.token.email));
+    }
+
     function activeUser() {
-      return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) && profile().data.status == 'active';
+      return signedIn()
+        && (
+          bootstrapAdmin()
+          ||
+          (hasUidProfile() && profile().data.status == 'active')
+          || (hasEmailProfile() && emailProfile().data.status == 'active')
+        );
     }
 
     function authorizedEmail() {
       return signedIn()
-        && exists(/databases/$(database)/documents/usuarios/$(request.auth.token.email))
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.token.email)).data.status == 'active';
+        && hasEmailProfile()
+        && emailProfile().data.status == 'active';
     }
 
     function emailProfile() {
@@ -25,7 +47,14 @@ service cloud.firestore {
     }
 
     function admin() {
-      return activeUser() && profile().data.role == 'admin';
+      return bootstrapAdmin()
+        || (
+          activeUser()
+          && (
+            (hasUidProfile() && profile().data.role == 'admin')
+            || (hasEmailProfile() && emailProfile().data.role == 'admin')
+          )
+        );
     }
 
     match /alunos/{docId} {
