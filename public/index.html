@@ -9,20 +9,12 @@
   <link href="./styles.css" rel="stylesheet">
 </head>
 <body>
-  <section id="setupScreen" class="setup-screen">
-    <form id="firebaseConfigForm" class="setup-card">
-      <h1>Historico Escolar Online</h1>
-      <p>Informe a configuracao Web do Firebase para conectar o sistema ao seu projeto.</p>
-      <textarea id="firebaseConfigText" class="form-control" rows="8" spellcheck="false" required></textarea>
-      <button class="btn btn-primary w-100 mt-3">Salvar configuracao</button>
-      <small>Firebase Console > Configuracoes do projeto > Seus apps > Web app > Configuracao do SDK.</small>
-    </form>
-  </section>
-
-  <section id="authScreen" class="setup-screen d-none">
+  <section id="authScreen" class="setup-screen">
     <form id="loginForm" class="setup-card">
       <h1>Historico Escolar Online</h1>
       <p>Sistema Desenvolvido pela Escola Estadual Nossa Senhora Auxiliadora.</p>
+      <p class="institutional-login">Acesse com o e-mail institucional @educacao.mg.gov.br</p>
+      <div id="loginAlert" class="login-alert d-none" role="alert"></div>
       <label class="form-label">Email</label>
       <input type="email" class="form-control" name="email" required>
       <label class="form-label mt-3">Senha</label>
@@ -38,13 +30,12 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">HE</div>
-        <div><strong>HE - Online</strong><small id="appVersionLabel">Firebase</small></div>
+        <div><strong>HE - Online</strong><small>Firebase</small></div>
       </div>
       <nav class="nav flex-column">
         <button class="nav-link active" data-view="dashboard"><i class="bi bi-speedometer2"></i><span>Dashboard</span></button>
         <button class="nav-link" data-view="alunos"><i class="bi bi-people"></i><span>Alunos</span></button>
         <button class="nav-link" data-view="historicos"><i class="bi bi-journal-text"></i><span>Historicos</span></button>
-        <button class="nav-link" data-view="certificados"><i class="bi bi-award"></i><span>Certificados</span></button>
         <button class="nav-link admin-only d-none" data-view="usuarios"><i class="bi bi-person-gear"></i><span>Usuarios</span></button>
         <button class="nav-link" data-view="config"><i class="bi bi-gear"></i><span>Configuracoes</span></button>
       </nav>
@@ -58,14 +49,13 @@
     <main class="main">
       <header class="topbar">
         <div><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle">Visao geral do historico escolar</p></div>
-        <div class="user-box"><i class="bi bi-person-circle"></i><span id="userEmail"></span><span class="version-pill" id="appVersionTop">--</span><button class="btn btn-sm btn-light" id="logout">Sair</button></div>
+        <div class="user-box"><i class="bi bi-person-circle"></i><span id="userEmail"></span><button class="btn btn-sm btn-light" id="logout">Sair</button></div>
       </header>
 
       <section id="view-dashboard" class="view active">
         <div class="stat-grid">
           <article class="stat-card"><i class="bi bi-people"></i><span>Total de alunos</span><strong id="totalAlunos">0</strong></article>
           <article class="stat-card"><i class="bi bi-journal-text"></i><span>Total de historicos</span><strong id="totalHistoricos">0</strong></article>
-          <article class="stat-card"><i class="bi bi-award"></i><span>Total de certificados</span><strong id="totalCertificados">0</strong></article>
         </div>
         <div class="content-grid">
           <section class="panel"><div class="panel-head"><h2>Ultimos alunos</h2><button class="btn btn-primary btn-sm" data-action="newAluno"><i class="bi bi-plus-lg"></i> Novo</button></div><div class="table-responsive"><table class="table"><thead><tr><th>Nome</th><th>CPF</th><th></th></tr></thead><tbody id="recentAlunos"></tbody></table></div></section>
@@ -88,7 +78,6 @@
             <div class="detail-actions">
               <button class="btn btn-outline-primary" id="editDetail"><i class="bi bi-pencil"></i> Editar</button>
               <button class="btn btn-primary" id="newHistoryDetail"><i class="bi bi-journal-plus"></i> Novo historico</button>
-              <button class="btn btn-success" id="newCertificateDetail"><i class="bi bi-award"></i> Certificado</button>
               <button class="btn btn-outline-dark" id="printHistoryDetail"><i class="bi bi-printer"></i> Imprimir</button>
             </div>
           </div>
@@ -96,7 +85,6 @@
         </section>
         <div class="content-grid">
           <section class="panel"><h2>Historicos</h2><div class="table-responsive"><table class="table"><thead><tr><th>Tipo</th><th>Serie</th><th>Ano</th><th>Situacao</th><th></th></tr></thead><tbody id="detailHistoricos"></tbody></table></div></section>
-          <section class="panel"><h2>Certificados</h2><div class="table-responsive"><table class="table"><thead><tr><th>Etapa</th><th>Conclusao</th><th>Emissao</th><th></th></tr></thead><tbody id="detailCertificados"></tbody></table></div></section>
         </div>
       </section>
 
@@ -117,10 +105,6 @@
           </form>
           <div class="table-responsive"><table class="table"><thead><tr><th>Email</th><th>Nome</th><th>Perfil</th><th>Status</th><th class="text-end">Acoes</th></tr></thead><tbody id="usuariosTable"></tbody></table></div>
         </section>
-      </section>
-
-      <section id="view-certificados" class="view">
-        <section class="panel"><div class="panel-head"><h2>Certificados</h2><button class="btn btn-primary" data-action="newCertificado"><i class="bi bi-award"></i> Emitir certificado</button></div><div class="table-responsive"><table class="table"><thead><tr><th>Aluno</th><th>Etapa</th><th>Conclusao</th><th>Emissao</th><th class="text-end">Acoes</th></tr></thead><tbody id="certificadosTable"></tbody></table></div></section>
       </section>
 
       <section id="view-config" class="view">
@@ -162,12 +146,6 @@
       <div class="col-md-3"><label class="form-label">Regime</label><input class="form-control" name="regime" placeholder="Anual"></div><div class="col-md-3"><label class="form-label">Turno</label><input class="form-control" name="turno"></div><div class="col-md-3"><label class="form-label">Modalidade</label><input class="form-control" name="modalidade"></div><div class="col-md-3"><label class="form-label">Resultado final</label><input class="form-control" name="resultadoFinal"></div>
     </div><div class="notes-head"><h6>Disciplinas e notas</h6><button type="button" class="btn btn-sm btn-outline-primary" id="addNota"><i class="bi bi-plus-lg"></i> Adicionar disciplina</button></div><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Disciplina</th><th>Nota</th><th>Carga horaria (horas)</th><th></th></tr></thead><tbody id="notasBody"></tbody></table></div></div>
     <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Salvar</button></div>
-  </form></div></div>
-
-  <div class="modal fade" id="certificadoModal" tabindex="-1"><div class="modal-dialog"><form class="modal-content" id="certificadoForm">
-    <div class="modal-header"><h5 class="modal-title">Certificado</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body"><div class="row g-3"><div class="col-12"><label class="form-label">Aluno</label><select class="form-select" name="alunoId" required></select></div><div class="col-md-6"><label class="form-label">Data de conclusao</label><input class="form-control date-br" name="dataConclusao" placeholder="dd/mm/aaaa" maxlength="10" required></div><div class="col-md-6"><label class="form-label">Etapa</label><select class="form-select" name="etapa" required><option>Ensino Fundamental</option><option>Ensino Medio</option></select></div></div></div>
-    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Emitir</button></div>
   </form></div></div>
 
   <div class="toast-container position-fixed bottom-0 end-0 p-3"><div id="appToast" class="toast"><div class="toast-header"><strong class="me-auto">HE - Online</strong><button type="button" class="btn-close" data-bs-dismiss="toast"></button></div><div class="toast-body"></div></div></div>
